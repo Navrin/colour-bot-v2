@@ -1,0 +1,6 @@
+[package]
+name = "colour-bot-v2"
+version = "0.1.0"
+authors = ["Navrin <navman360@gmail.com>"]
+
+[dependencies]
