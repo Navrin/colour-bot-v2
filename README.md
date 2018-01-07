@@ -12,9 +12,14 @@
 - [ ] Can await a message from a user.
 - [ ] Can await a reaction from a user.
 
-### Colour section
+### Colours
 
 - [ ] Can add a colour role to a user.
 - [ ] Can store a colour role on a database.
 - [ ] Can determine what guilds have what roles.
 - [ ] Can edit a colour role and update the discord role.
+
+### Display
+
+- [ ] Can create colour diagrams and send them into discord.
+- [ ] Can display messages in a pretty embed format.
