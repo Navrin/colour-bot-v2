@@ -18,7 +18,7 @@ pub struct DiscordConfig {
     pub playing_message: Option<String>,
 }
 
-pub fn get_config() -> Option<Config> {
+pub fn get_config_from_file() -> Option<Config> {
     let path = var("COLOUR_BOT_CONFIG")
         .or(var("COLOR_BOT_CONFIG"))
         .unwrap_or("./config.toml".into());
