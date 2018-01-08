@@ -19,6 +19,11 @@
 - [ ] Can determine what guilds have what roles.
 - [ ] Can edit a colour role and update the discord role.
 
+## QOL
+
+- [ ] Can display an interactive tutorial on how to use the bot.
+- [ ] Can display an interactive embed that cycles all through the roles.
+
 ### Display
 
 - [ ] Can create colour diagrams and send them into discord.
