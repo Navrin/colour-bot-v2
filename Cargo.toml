@@ -5,20 +5,23 @@ version = "0.1.0"
 
 [dependencies]
 bigdecimal = "0.0.10"
-chrono = "0.4.0"
-nom = "3.2.1"
+failure = "0.1.1"
 num-traits = "0.1.41"
-rand = "0.4.2"
-regex = "0.2.5"
+postgres = "0.15.1"
+r2d2 = "0.8.2"
 serde = "1.0.27"
 serde_derive = "1.0.27"
 toml = "0.4.5"
+typemap = "0.3.3"
 
 [dependencies.diesel]
 features = [
     "numeric",
     "postgres",
 ]
+version = "1.0.0"
+
+[dependencies.r2d2-diesel]
 version = "1.0.0"
 
 [dependencies.serenity]

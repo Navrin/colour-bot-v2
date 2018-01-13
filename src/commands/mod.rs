@@ -3,3 +3,4 @@
 /// the command configuration object.
 
 pub mod utils;
+pub mod assign;

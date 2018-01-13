@@ -6,7 +6,7 @@ use toml;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub database: Option<()>, // TODO
+    pub database: DatabaseConfig, // TODO
     pub discord: DiscordConfig,
 }
 
@@ -16,6 +16,15 @@ pub struct DiscordConfig {
     pub token: String,
     /// This sets the game that will display under the bot in the members list.
     pub playing_message: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct DatabaseConfig {
+    pub username: String,
+    pub password: String,
+    pub address: String,
+    pub port: String,
+    pub database: String,
 }
 
 pub fn get_config_from_file() -> Option<Config> {

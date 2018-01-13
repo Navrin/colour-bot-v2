@@ -2,15 +2,21 @@
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
 
+extern crate bigdecimal;
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate failure;
+extern crate num_traits;
+extern crate postgres;
+extern crate r2d2;
+extern crate r2d2_diesel;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serenity;
 extern crate toml;
-#[macro_use]
-extern crate diesel;
-extern crate bigdecimal;
-extern crate num_traits;
+extern crate typemap;
 
 mod config;
 mod commands;
@@ -34,21 +40,24 @@ fn create_framework() -> StandardFramework {
                 .on_mention(true)
                 .case_insensitivity(true)
         })
-        .command("ping", |cmd| {
-            cmd.desc("Does a pong").exec(|_, msg, _| {
-                msg.reply("Pong")?;
-                Ok(())
-            })
-        })
         .command("info", commands::utils::info)
+        .command("get", commands::assign::get_colour)
 }
 
 fn main() {
     let config = config::get_config_from_file()
-        .expect("Could not find a config file. Either prodive a config.toml at the root or set a env key called COLOUR_BOT_CONFIG as a path to a config.");
+        .expect("Could not find a config file. Either provide a config.toml at the root or set a env key called COLOUR_BOT_CONFIG as a path to a config.");
 
     let mut client = Client::new(&config.discord.token, Handler)
         .expect("Could not initiate client. Check if your token is a *VALID* bot token.");
+
+    let pool = db::DB::new(&config.database)
+        .expect("Could not create a database connection. Verify if the given database config is valid, and your database is enabled and active.");
+
+    {
+        let mut data = client.data.lock();
+        data.insert::<db::DB>(pool);
+    }
 
     client.with_framework(create_framework());
 

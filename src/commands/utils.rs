@@ -1,5 +1,5 @@
 use serenity::framework::standard::CreateCommand;
-use serenity::model::prelude::{User, Message};
+use serenity::model::prelude::{Message, User};
 use serenity::client::Context;
 use serenity::framework::standard::{Args, CommandError};
 use serenity::builder::CreateEmbed;
@@ -34,14 +34,14 @@ pub fn info_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(), Com
         ("Total users", user_count.to_string(), true),
     ];
 
-    channel.id().send_message(|msg| 
-        msg.embed(|embed| 
+    channel.id().send_message(|msg| {
+        msg.embed(|embed| {
             embed
                 .title("Colour Bot V2")
                 .colour(Colour::red())
                 .fields(fields)
-        )
-    )?;
+        })
+    })?;
 
     Ok(())
 }

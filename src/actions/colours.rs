@@ -75,19 +75,15 @@ pub fn get_managed_roles_from_user(
         .and_then(|guild_record| {
             Colour::belonging_to(&guild_record)
                 .get_results::<Colour>(connection)
-                .map_err(|e| {
-                    SerenityError::Other(
-                        format!("Couldn't access the database due to {}.", e.description())
-                            .as_str(),
-                    )
-                })
+                .map_err(|_| SerenityError::Other("Couldn't access the database."))
         })
-        .and_then(|colours_for_guild| {
-            let colour_ids = colours_for_guild
+        .map(|colours_for_guild| {
+            colours_for_guild
                 .iter()
-                .map(|c| c.id)
-                .collect::<Vec<BigDecimal>>();
-
+                .map(|c| c.id.clone())
+                .collect::<Vec<BigDecimal>>()
+        })
+        .and_then(|colour_ids| {
             guild
                 .members
                 .get(&user.id)
