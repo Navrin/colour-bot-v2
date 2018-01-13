@@ -7,8 +7,15 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serenity;
 extern crate toml;
+#[macro_use]
+extern crate diesel;
+extern crate bigdecimal;
+extern crate num_traits;
 
 mod config;
+mod commands;
+mod actions;
+mod db;
 
 use serenity::Client;
 use serenity::client::EventHandler;
@@ -33,6 +40,7 @@ fn create_framework() -> StandardFramework {
                 Ok(())
             })
         })
+        .command("info", commands::utils::info)
 }
 
 fn main() {
