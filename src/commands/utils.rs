@@ -2,12 +2,11 @@ use serenity::framework::standard::CreateCommand;
 use serenity::model::prelude::{Message, User};
 use serenity::client::Context;
 use serenity::framework::standard::{Args, CommandError};
-use serenity::builder::CreateEmbed;
 use serenity::utils::Colour;
 use serenity::CACHE;
 
 pub fn info(cmd: CreateCommand) -> CreateCommand {
-    cmd.desc("Displays some useful infomation abou the bot in embed form.")
+    cmd.desc("Displays some useful infomation about the bot in embed form.")
         .exec(info_exec)
 }
 

@@ -1,4 +1,4 @@
-use std::error::Error;
+use actions::guilds;
 
 use diesel;
 use diesel::prelude::*;
@@ -8,12 +8,13 @@ use diesel::BelongingToDsl;
 use db::models::Guild;
 use db::models::Colour;
 
+use db::schema::colours::table as colours_table;
 use db::schema::colours as colours_schema;
 use db::schema::colours::dsl as c;
 
-use serenity::model::guild::{Guild as DiscordGuild, Role as DiscordRole};
+use serenity::model::guild::{Guild as DiscordGuild, Member as DiscordMember, Role as DiscordRole};
 use serenity::model::user::User as DiscordUser;
-use serenity::model::id::RoleId;
+use serenity::model::id::{GuildId, RoleId};
 use serenity::Error as SerenityError;
 use serenity::prelude::ModelError;
 
@@ -22,11 +23,17 @@ use bigdecimal::BigDecimal;
 
 use actions::guilds as guild_actions;
 
-pub fn find_from_name(name: String, guild: &Guild, connection: &PgConnection) -> Option<Colour> {
-    <Colour as BelongingToDsl<&Guild>>::belonging_to(guild)
+pub fn find_from_name(name: &str, guild: &Guild, connection: &PgConnection) -> Option<Colour> {
+    Colour::belonging_to(guild)
         .filter(c::name.ilike(format!("%{}%", name)))
         .get_result::<Colour>(connection)
         .ok()
+}
+
+pub fn find_from_role_id(id: &RoleId, connection: &PgConnection) -> Option<Colour> {
+    let id = BigDecimal::from_u64(id.0)?;
+
+    colours_table.find(id).get_result::<Colour>(connection).ok()
 }
 
 pub fn search_role(colour: &Colour, guild: &DiscordGuild) -> Option<DiscordRole> {
@@ -36,17 +43,21 @@ pub fn search_role(colour: &Colour, guild: &DiscordGuild) -> Option<DiscordRole>
         .and_then(|id| guild.roles.get(&RoleId(id)).map(|v| v.clone()))
 }
 
-pub fn convert_role_to_record(
+pub fn remove_record(colour: &Colour, connection: &PgConnection) -> QueryResult<usize> {
+    diesel::delete(colour).execute(connection)
+}
+
+pub fn convert_role_to_record_struct(
     name: String,
     role: &DiscordRole,
-    guild: &DiscordGuild,
+    guild: &GuildId,
 ) -> Option<Colour> {
     BigDecimal::from_u64(role.id.0)
-        .and_then(|role_id| BigDecimal::from_u64(guild.id.0).map(|guild_id| (role_id, guild_id)))
+        .and_then(|role_id| BigDecimal::from_u64(guild.0).map(|guild_id| (role_id, guild_id)))
         .map(|(id, guild_id)| Colour { name, id, guild_id })
 }
 
-pub fn insert_record(colour: Colour, connection: &PgConnection) -> Option<Colour> {
+pub fn save_record_to_db(colour: Colour, connection: &PgConnection) -> Option<Colour> {
     diesel::insert_into(colours_schema::table)
         .values(&colour)
         .get_result(connection)
@@ -54,51 +65,53 @@ pub fn insert_record(colour: Colour, connection: &PgConnection) -> Option<Colour
 }
 
 pub fn assign_role_to_user(
-    user: &DiscordUser,
+    member: &mut DiscordMember,
     role: &DiscordRole,
-    guild: &mut DiscordGuild,
 ) -> Result<(), SerenityError> {
-    guild
-        .members
-        .get_mut(&user.id)
-        .ok_or(SerenityError::Model(ModelError::InvalidUser))
-        .and_then(|member| member.add_role(role))
+    member.add_role(role)
 }
 
 pub fn get_managed_roles_from_user(
-    user: &DiscordUser,
-    guild: &DiscordGuild,
+    member: &DiscordMember,
+    guild: &GuildId,
     connection: &PgConnection,
 ) -> Result<Vec<RoleId>, SerenityError> {
-    guild_actions::convert_guild_to_record(guild, connection)
-        .ok_or(SerenityError::Model(ModelError::GuildNotFound))
-        .and_then(|guild_record| {
-            Colour::belonging_to(&guild_record)
-                .get_results::<Colour>(connection)
-                .map_err(|_| SerenityError::Other("Couldn't access the database."))
+    let guild_record = guild_actions::convert_guild_to_record(&guild, connection)
+        .ok_or(SerenityError::Model(ModelError::GuildNotFound))?;
+
+    let colours_for_guild = Colour::belonging_to(&guild_record)
+        .get_results::<Colour>(connection)
+        .map_err(|_| SerenityError::Other("Couldn't access the database."))?;
+
+    let colour_ids = colours_for_guild
+        .iter()
+        .map(|c| c.id.clone())
+        .collect::<Vec<BigDecimal>>();
+
+    Ok(member
+        .roles
+        .iter()
+        .filter(|r| {
+            BigDecimal::from_u64(r.0)
+                .map(|id| colour_ids.contains(&id))
+                .unwrap_or(false)
         })
-        .map(|colours_for_guild| {
-            colours_for_guild
-                .iter()
-                .map(|c| c.id.clone())
-                .collect::<Vec<BigDecimal>>()
-        })
-        .and_then(|colour_ids| {
-            guild
-                .members
-                .get(&user.id)
-                .ok_or(SerenityError::Model(ModelError::InvalidUser))
-                .map(|member| {
-                    member
-                        .roles
-                        .iter()
-                        .filter(|r| {
-                            BigDecimal::from_u64(r.0)
-                                .map(|id| colour_ids.contains(&id))
-                                .unwrap_or(false)
-                        })
-                        .map(|id| id.clone())
-                        .collect::<Vec<RoleId>>()
-                })
-        })
+        .map(|id| id.clone())
+        .collect::<Vec<RoleId>>())
+}
+
+pub fn assign_colour_to_user(
+    author: &DiscordUser,
+    mut discord_guild: &mut DiscordGuild,
+    colour_role: &DiscordRole,
+    conn: &PgConnection,
+) -> Result<(), SerenityError> {
+    let id = discord_guild.id;
+
+    let mut user_member = guilds::convert_user_to_member_result(&author, &mut discord_guild)?;
+
+    let old_roles = get_managed_roles_from_user(&mut user_member, &id, &*conn)?;
+
+    user_member.remove_roles(old_roles.as_slice())?;
+    assign_role_to_user(&mut user_member, &colour_role)
 }

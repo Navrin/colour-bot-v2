@@ -3,8 +3,8 @@ use r2d2::{self, Error as R2D2Error, PooledConnection};
 use r2d2_diesel::ConnectionManager;
 use config::DatabaseConfig;
 use diesel::PgConnection;
-use std::ops::Deref;
 
+#[derive(Clone)]
 pub struct DB(r2d2::Pool<ConnectionManager<PgConnection>>);
 
 impl Key for DB {
@@ -27,7 +27,7 @@ impl DB {
     }
 
     pub fn make_connection(&self) -> Option<PooledConnection<ConnectionManager<PgConnection>>> {
-        self.0.get().ok()
+        self.0.clone().get().ok()
     }
 }
 
