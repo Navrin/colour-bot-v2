@@ -4,8 +4,8 @@
 
 ### Parsing
 
-- [ ] Can parse messages and dispatch properly.
-- [ ] Can parse a hex code like #fff or #f0f0f0 into a Colour enum/struct.
+- [x] Can parse messages and dispatch properly.
+- [x] Can parse a hex code like #fff or #f0f0f0 into a Colour enum/struct.
 
 ### Interactivity
 
@@ -14,10 +14,11 @@
 
 ### Colours
 
-- [ ] Can add a colour role to a user.
-- [ ] Can store a colour role on a database.
-- [ ] Can determine what guilds have what roles.
-- [ ] Can edit a colour role and update the discord role.
+- [x] Can add a colour role to a user.
+- [x] Can store a colour role on a database.
+- [x] Can determine what guilds have what roles.
+- [x] Can quickly generate new roles.
+- [ ] Can edit a colour role and update the discord role. (*should be done interactively.*)
 
 ## QOL
 
