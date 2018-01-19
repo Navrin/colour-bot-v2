@@ -4,6 +4,7 @@ use diesel;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use diesel::BelongingToDsl;
+use diesel::result::Error as DieselError;
 
 use db::models::Guild;
 use db::models::Colour;
@@ -17,9 +18,12 @@ use serenity::model::user::User as DiscordUser;
 use serenity::model::id::{GuildId, RoleId};
 use serenity::Error as SerenityError;
 use serenity::prelude::ModelError;
+use serenity::utils::Colour as DiscordColour;
 
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use bigdecimal::BigDecimal;
+
+use colours::images::Name;
 
 use actions::guilds as guild_actions;
 
@@ -28,6 +32,41 @@ pub fn find_from_name(name: &str, guild: &Guild, connection: &PgConnection) -> O
         .filter(c::name.ilike(format!("%{}%", name)))
         .get_result::<Colour>(connection)
         .ok()
+}
+
+pub fn find_all(guild: &Guild, connection: &PgConnection) -> Option<Vec<Colour>> {
+    Colour::belonging_to(guild)
+        .get_results::<Colour>(connection)
+        .ok()
+}
+
+pub fn convert_records_to_roles_and_name<'a>(
+    colours: &Vec<Colour>,
+    guild: &'a DiscordGuild,
+) -> Option<Vec<(String, &'a DiscordRole)>> {
+    let roles = colours
+        .iter()
+        .filter_map(|colour| {
+            let id = colour.id.to_u64()?;
+
+            Some((colour.name.clone(), guild.roles.get(&RoleId(id))?))
+        })
+        .collect::<Vec<(String, &DiscordRole)>>();
+
+    if roles.len() <= 0 {
+        None
+    } else {
+        Some(roles)
+    }
+}
+
+pub fn convert_roles_and_name_to_list_type(
+    colours: &Vec<(String, &DiscordRole)>,
+) -> Vec<(Name, DiscordColour)> {
+    colours
+        .iter()
+        .map(|&(ref name, ref role)| (Name(name.to_string()), role.colour.clone()))
+        .collect()
 }
 
 pub fn find_from_role_id(id: &RoleId, connection: &PgConnection) -> Option<Colour> {
@@ -57,11 +96,12 @@ pub fn convert_role_to_record_struct(
         .map(|(id, guild_id)| Colour { name, id, guild_id })
 }
 
-pub fn save_record_to_db(colour: Colour, connection: &PgConnection) -> Option<Colour> {
+pub fn save_record_to_db(colour: Colour, connection: &PgConnection) -> QueryResult<Colour> {
+    guilds::check_or_create_guild(&colour.guild_id, connection).to_result()?;
+
     diesel::insert_into(colours_schema::table)
         .values(&colour)
         .get_result(connection)
-        .ok()
 }
 
 pub fn assign_role_to_user(

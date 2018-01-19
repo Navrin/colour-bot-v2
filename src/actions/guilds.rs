@@ -1,6 +1,7 @@
 use failure::Error;
 
 use diesel;
+use diesel::result::Error as DieselError;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 
@@ -22,6 +23,54 @@ use bigdecimal::BigDecimal;
 
 pub fn convert_guild_to_record(guild: &GuildId, connection: &PgConnection) -> Option<Guild> {
     BigDecimal::from_u64(guild.0).and_then(|id| guilds_table.find(id).first(connection).ok())
+}
+
+fn record_exists<T>(query: QueryResult<T>) -> Option<bool> {
+    match query {
+        Ok(_) => Some(true),
+        Err(DieselError::NotFound) => Some(false),
+        Err(_) => None,
+    }
+}
+
+pub enum GuildCheckStatus {
+    AlreadyExists(Guild),
+    NewlyCreated(Guild),
+    Error(DieselError),
+}
+
+impl GuildCheckStatus {
+    pub fn to_result(self) -> Result<Guild, DieselError> {
+        match self {
+            GuildCheckStatus::AlreadyExists(g) => Ok(g),
+            GuildCheckStatus::NewlyCreated(g) => Ok(g),
+            GuildCheckStatus::Error(e) => Err(e),
+        }
+    }
+
+    pub fn result_to_newly(result: QueryResult<Guild>) -> GuildCheckStatus {
+        match result {
+            Ok(v) => GuildCheckStatus::NewlyCreated(v),
+            Err(e) => GuildCheckStatus::Error(e),
+        }
+    }
+}
+
+pub fn check_or_create_guild(id: &BigDecimal, connection: &PgConnection) -> GuildCheckStatus {
+    let query = guilds_table.find(id).get_result::<Guild>(connection);
+
+    match query {
+        Ok(v) => GuildCheckStatus::AlreadyExists(v),
+        Err(DieselError::NotFound) => {
+            let id = id.clone();
+            let res = diesel::insert_into(guilds_table)
+                .values(&Guild { id })
+                .get_result::<Guild>(connection);
+
+            GuildCheckStatus::result_to_newly(res)
+        }
+        Err(e) => GuildCheckStatus::Error(e),
+    }
 }
 
 pub fn create_new_record_from_guild(

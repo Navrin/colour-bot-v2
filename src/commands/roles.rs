@@ -1,4 +1,3 @@
-use emotes;
 use utils;
 use actions;
 use colours::ParsedColour;
@@ -128,9 +127,12 @@ pub fn add_colour_exec(
             "Fatal error while trying to convert a role its database representation.".to_string(),
         ))?;
 
-    actions::colours::save_record_to_db(colour_record, &*connection).ok_or(CommandError(
-        "Fatal error while trying to save the record into the database.".to_string(),
-    ))?;
+    actions::colours::save_record_to_db(colour_record, &*connection).map_err(|e| {
+        CommandError(format!(
+            "Fatal error while trying to save the record into the database. Reason: {:?}",
+            e
+        ))
+    })?;
 
     // //! Update colour list
 
@@ -245,7 +247,7 @@ pub fn generate_colour_exec(
             )
         })?;
 
-    actions::colours::save_record_to_db(colour_struct, &*connection).ok_or_else(|| {
+    actions::colours::save_record_to_db(colour_struct, &*connection).map_err(|_| {
         let _ = new_role.delete();
 
         CommandError(

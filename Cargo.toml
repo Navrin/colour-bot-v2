@@ -7,13 +7,20 @@ version = "0.1.0"
 bigdecimal = "0.0.10"
 failure = "0.1.1"
 num-traits = "0.1.41"
+palette = "0.2.1"
+png = "0.11.0"
 postgres = "0.15.1"
 r2d2 = "0.8.2"
 read_color = "1.0.0"
 serde = "1.0.27"
 serde_derive = "1.0.27"
+svg = "0.5.10"
 toml = "0.4.5"
 typemap = "0.3.3"
+
+[dependencies.cairo-rs]
+features = ["png"]
+version = "0.3.0"
 
 [dependencies.diesel]
 features = [
@@ -24,6 +31,10 @@ version = "1.0.0"
 
 [dependencies.r2d2-diesel]
 version = "1.0.0"
+
+[dependencies.resvg]
+features = ["cairo-backend"]
+version = "0.1.0"
 
 [dependencies.serenity]
 branch = "v0.5.0"

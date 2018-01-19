@@ -3,18 +3,22 @@
 //! A reimplmentation of the colour bot in a fully type-safe language.
 
 extern crate bigdecimal;
+extern crate cairo;
 #[macro_use]
 extern crate diesel;
 extern crate failure;
 extern crate num_traits;
+extern crate png;
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate read_color;
+extern crate resvg;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serenity;
+extern crate svg;
 extern crate toml;
 extern crate typemap;
 
@@ -34,9 +38,20 @@ use serenity::client::EventHandler;
 use serenity::framework::StandardFramework;
 use serenity::framework::standard::help_commands::with_embeds;
 use serenity::framework::standard::{CommandError, DispatchError};
+use serenity::model::gateway::Ready;
+use serenity::prelude::Context;
+use serenity::utils::Colour;
 
 struct Handler;
-impl EventHandler for Handler {}
+impl EventHandler for Handler {
+    fn ready(&self, _: Context, ready: Ready) {
+        println!(
+            "Bot is now running!\nOn {} gulids, named as {}.",
+            ready.guilds.len(),
+            ready.user.name
+        );
+    }
+}
 
 fn create_framework() -> StandardFramework {
     let framework = StandardFramework::new();
@@ -57,6 +72,7 @@ fn create_framework() -> StandardFramework {
                 .command("add", commands::roles::add_colour)
                 .command("remove", commands::roles::remove_colour)
                 .command("generate", commands::roles::generate_colour)
+                .command("list", commands::lists::list_colours)
         })
         .group("utils", |group| {
             group.command("info", commands::utils::info)
@@ -145,6 +161,24 @@ fn main() {
         let mut data = client.data.lock();
         data.insert::<db::DB>(pool);
     }
+
+    let longi = "mmmmmmmmmmmmmmmm";
+    println!("{}", longi.len());
+
+    use colours::images::Name;
+    let z = colours::images::ColourListBuilder::new().create_image(
+        vec![
+            (Name("iiIIiiIIIpple".to_string()), Colour::blue()),
+            (Name(longi.to_string()), Colour::teal()),
+            (
+                Name("this is a test of a test ".to_string()),
+                Colour::magenta(),
+            ),
+        ],
+        "abc",
+    );
+
+    z.unwrap();
 
     client.with_framework(create_framework());
 
