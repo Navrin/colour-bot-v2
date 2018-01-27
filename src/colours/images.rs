@@ -1,14 +1,10 @@
 use std::fs::File;
 use std::path::PathBuf;
 use std::io::Error as IoError;
-use std::io::prelude::*;
 
-use serenity::model::guild::Role;
 use serenity::utils::Colour;
 
-// use cairo;
-use cairo::{ImageSurface, IoError as CairoIoError};
-// use cairo::prelude::*;
+use cairo::IoError as CairoIoError;
 
 use resvg;
 use resvg::Error as ReSvgError;
@@ -16,7 +12,6 @@ use svg;
 
 use svg::node::Text;
 use svg::Document;
-use svg::node::Node;
 use svg::node::element::{Group, Rectangle, Text as TextEl};
 
 const DARK_THEME_BACKGROUND: &'static str = "#36393e";
@@ -24,7 +19,6 @@ const DARK_THEME_BACKGROUND: &'static str = "#36393e";
 const TOP_PADDING: usize = 50;
 
 const FONT_SIZE: f64 = 35.0;
-const LONG_NAME: usize = 13;
 const LIST_ROW_HEIGHT: usize = 65;
 const LIST_COLUMN_WIDTH: usize = 500;
 
@@ -78,7 +72,7 @@ impl From<ReSvgError> for ColourBuilderError {
 pub struct ColourListBuilder {
     list_type: ColourListType,
     dual_colour: bool,
-    show_hex_codes: bool,
+    // show_hex_codes: bool,
 }
 
 impl ColourListBuilder {
@@ -86,24 +80,24 @@ impl ColourListBuilder {
         ColourListBuilder {
             list_type: ColourListType::BasicList,
             dual_colour: true,
-            show_hex_codes: true,
+            // show_hex_codes: true,
         }
     }
 
-    pub fn set_type(&mut self, cl: ColourListType) -> &mut ColourListBuilder {
-        self.list_type = cl;
-        self
-    }
+    // pub fn set_type(&mut self, cl: ColourListType) -> &mut ColourListBuilder {
+    //     self.list_type = cl;
+    //     self
+    // }
 
-    pub fn set_dual_colour(&mut self, st: bool) -> &mut ColourListBuilder {
-        self.dual_colour = st;
-        self
-    }
+    // pub fn set_dual_colour(&mut self, st: bool) -> &mut ColourListBuilder {
+    //     self.dual_colour = st;
+    //     self
+    // }
 
-    pub fn set_show_hex_code(&mut self, st: bool) -> &mut ColourListBuilder {
-        self.show_hex_codes = st;
-        self
-    }
+    // pub fn set_show_hex_code(&mut self, st: bool) -> &mut ColourListBuilder {
+    //     self.show_hex_codes = st;
+    //     self
+    // }
 
     pub fn get_height_for_type(&self, amount: usize) -> usize {
         match self.list_type {
@@ -148,7 +142,7 @@ impl ColourListBuilder {
         &self,
         document: Document,
         colours: Vec<ColourSection>,
-        (height, width, columns): (usize, usize, usize),
+        (height, width, _): (usize, usize, usize),
     ) -> Document {
         let background = Rectangle::new()
             .set("x", 0)
@@ -211,7 +205,7 @@ impl ColourListBuilder {
     ) -> Vec<ColourSection> {
         colours
             .iter()
-            .zip((0..colours.len()))
+            .zip(0..colours.len())
             .map(|(&(ref name, colour), height)| {
                 self.get_section_from_colour(name.0.clone(), colour, height, &colours)
             })

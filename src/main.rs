@@ -8,6 +8,7 @@ extern crate cairo;
 extern crate diesel;
 extern crate failure;
 extern crate num_traits;
+extern crate parking_lot;
 extern crate png;
 extern crate postgres;
 extern crate r2d2;
@@ -17,6 +18,7 @@ extern crate resvg;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 extern crate serenity;
 extern crate svg;
 extern crate toml;
@@ -36,14 +38,87 @@ use std::time::Duration;
 use serenity::Client;
 use serenity::client::EventHandler;
 use serenity::framework::StandardFramework;
+use serenity::framework::standard::Args;
 use serenity::framework::standard::help_commands::with_embeds;
 use serenity::framework::standard::{CommandError, DispatchError};
+use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::prelude::Context;
-use serenity::utils::Colour;
+
+use num_traits::ToPrimitive;
+
+const PREFIX_LIST: [&'static str; 5] = ["!c", "!colour", "!color", "!colours", "!colors"];
+const HELP_CMD_NAME: &'static str = "help";
+
+// TODO: !! UPDATE THE COLOUR LIST WHEN COLOURS CHANGE.
+// WRITE A HELP MESSAGE AND HAVE IT SENT WITH THE COLOUR MESSAGE SO IT DOESN'T HAVE TO BE TRACKED:
+// MEANING THAT NO COLOUR IMAGE MESSAGE NEEDS TO BE PERSISTED, AND INSTEAD THE WHOLE CHANNEL CAN BE CLEARED
 
 struct Handler;
+
 impl EventHandler for Handler {
+    // TODO: impl channel delete check
+    // TODO: impl guild join setup and permissions check
+
+    fn message(&self, mut ctx: Context, message: Message) {
+        let starts_with_prefix = PREFIX_LIST
+            .iter()
+            .map(|string| string.clone().to_string())
+            .map(|prefix| message.content.starts_with(&prefix))
+            .any(|id| id);
+
+        if message.author.bot || starts_with_prefix {
+            return;
+        }
+
+        let connection = utils::get_connection_or_panic(&ctx);
+
+        let colour_chan = utils::get_guild_result(&message)
+            .ok()
+            .and_then(|guild| {
+                let id = guild.read().id;
+                actions::guilds::convert_guild_to_record(&id, &connection)
+            })
+            .and_then(|guild_record| guild_record.channel_id)
+            .and_then(|id| id.to_u64());
+
+        let channel_id = message.channel_id;
+        let message_channel_id = message.channel_id.0;
+
+        match colour_chan {
+            Some(colour_channel_id) if message_channel_id == colour_channel_id => {
+                let args = Args::new(&message.content, &[" ".to_string()]);
+
+                let result = commands::roles::get_colour_exec(&mut ctx, &message, args);
+
+                let message_clone = message.clone();
+
+                let _ = result
+                    .map(|_| {
+                        let _ = message.react(emotes::GREEN_TICK);
+                        thread::spawn(move || {
+                            thread::sleep(Duration::from_secs(2));
+                            let _ = message.delete();
+                        });
+                    })
+                    .map_err(|CommandError(m)| {
+                        let _ = message_clone.react(emotes::RED_CROSS);
+                        let _ = channel_id
+                            .send_message(|msg| {
+                                msg.content(format!("Couldn't assign a colour due to: {}", m))
+                            })
+                            .map(|msg| {
+                                thread::spawn(move || {
+                                    thread::sleep(Duration::from_secs(8));
+                                    let _ = msg.delete();
+                                });
+                            });
+                    });
+            }
+            Some(_) | None => {}
+        }
+    }
+
     fn ready(&self, _: Context, ready: Ready) {
         println!(
             "Bot is now running!\nOn {} gulids, named as {}.",
@@ -58,8 +133,7 @@ fn create_framework() -> StandardFramework {
 
     framework
         .configure(|cfg| {
-            cfg.prefix("!testc")
-                .prefixes(vec!["!c", "!colour", "!color", "!colours", "!colors"])
+            cfg.prefixes(PREFIX_LIST.iter())
                 .ignore_bots(true)
                 .on_mention(true)
                 .allow_whitespace(true)
@@ -74,8 +148,33 @@ fn create_framework() -> StandardFramework {
                 .command("generate", commands::roles::generate_colour)
                 .command("list", commands::lists::list_colours)
         })
+        .group("channel", |group| {
+            group.command("setchannel", commands::channels::set_channel)
+        })
         .group("utils", |group| {
             group.command("info", commands::utils::info)
+        })
+        .before(|_ctx, msg, name| {
+            if name == HELP_CMD_NAME {
+                let msg = msg.clone();
+                let _ = msg.react(emotes::RED_CROSS);
+
+                let _ = msg.channel_id
+                    .send_message(|msg| {
+                        msg.content("This command does not work outside of a DM to prevent spam, please DM me instead!")
+                    })
+                    .map(|res| {
+                        thread::spawn(move || {
+                            thread::sleep(Duration::from_secs(8));
+                            let _ = res.delete();
+                            let _ = msg.delete();
+                        });
+                    });
+
+                false
+            } else {
+                true
+            }
         })
         .after(|_ctx, msg, cmd_name, res| {
             match res {
@@ -84,7 +183,7 @@ fn create_framework() -> StandardFramework {
 
                     let _ = result.map_err(|_| {
                         let _ = msg.channel_id.send_message(|msg| {
-                            msg.content("Error trying to react to a message. Check persmissions for the bot!")
+                            msg.content("Error trying to react to a message. Check permissions for the bot!")
                         });
                     });
                 }
@@ -161,24 +260,6 @@ fn main() {
         let mut data = client.data.lock();
         data.insert::<db::DB>(pool);
     }
-
-    let longi = "mmmmmmmmmmmmmmmm";
-    println!("{}", longi.len());
-
-    use colours::images::Name;
-    let z = colours::images::ColourListBuilder::new().create_image(
-        vec![
-            (Name("iiIIiiIIIpple".to_string()), Colour::blue()),
-            (Name(longi.to_string()), Colour::teal()),
-            (
-                Name("this is a test of a test ".to_string()),
-                Colour::magenta(),
-            ),
-        ],
-        "abc",
-    );
-
-    z.unwrap();
 
     client.with_framework(create_framework());
 

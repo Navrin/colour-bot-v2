@@ -5,3 +5,4 @@
 pub mod utils;
 pub mod roles;
 pub mod lists;
+pub mod channels;

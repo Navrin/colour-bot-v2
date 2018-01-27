@@ -6,7 +6,6 @@ use std::fmt::{Display, Error as FmtError, Formatter};
 
 use std::str::FromStr;
 use std::error::Error;
-use std::convert::Into;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColourParseError {

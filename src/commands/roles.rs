@@ -6,12 +6,11 @@ use std::thread;
 use std::time::Duration;
 
 use serenity::framework::standard::CreateCommand;
-use serenity::model::prelude::{Message, Role, User};
+use serenity::model::prelude::Message;
 use serenity::model::id::RoleId;
 use serenity::model::permissions::Permissions;
 use serenity::client::Context;
 use serenity::framework::standard::{Args, CommandError};
-use serenity::utils::Colour;
 
 use num_traits::cast::ToPrimitive;
 
@@ -33,14 +32,14 @@ pub fn get_colour_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(
     let guild = msg.guild()
         .ok_or(CommandError("Could not find guild. This command only works in a guild, if you are a in a PM / Group, please only use commands that do not require any roles".to_string()))?;
     let discord_guild = guild.clone();
-    let mut discord_guild = discord_guild.write();
+    let discord_guild = discord_guild.write();
     let discord_guild_id = discord_guild.id;
 
-    let guild = actions::guilds::convert_guild_to_record(&discord_guild_id, &*conn)
-        .or_else(|| actions::guilds::create_new_record_from_guild(&discord_guild_id, &*conn).ok())
+    let guild = actions::guilds::convert_guild_to_record(&discord_guild_id, &conn)
+        .or_else(|| actions::guilds::create_new_record_from_guild(&discord_guild_id, &conn).ok())
         .ok_or(CommandError("Could not find/create a guild.".to_string()))?;
 
-    let colour = actions::colours::find_from_name(&colour_name, &guild, &*conn)
+    let colour = actions::colours::find_from_name(&colour_name, &guild, &conn)
         .ok_or(CommandError(format!("Could not find a name that matches {}. Make sure you've used the correct spelling, and that you are typing a valid colour name like (red), and not a hex code like (#fff)", colour_name)))?;
 
     let channel = msg.channel()
@@ -62,25 +61,16 @@ pub fn get_colour_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(
     })?;
 
     thread::spawn(move || {
-        thread::sleep(Duration::from_secs(6));
-
-        // ignore whatever. Handle later.
+        thread::sleep(Duration::from_secs(4));
         let _ = colour_init_msg.delete();
     });
 
     let colour_role = actions::colours::search_role(&colour, &discord_guild).ok_or_else(|| {
-        let _ = actions::colours::remove_record(&colour, &*conn);
+        let _ = actions::colours::remove_record(&colour, &conn);
         CommandError("Role is missing from the guild. Removing role from the list so that this doesn't occur again.".to_string())
     })?;
 
-    actions::colours::assign_colour_to_user(
-        &msg.author,
-        &mut *discord_guild,
-        &colour_role,
-        &*conn,
-    )?;
-
-    drop(discord_guild);
+    actions::colours::assign_colour_to_user(&msg.author, discord_guild, &colour_role, &conn)?;
 
     Ok(())
 }
@@ -114,9 +104,7 @@ pub fn add_colour_exec(
 
     let name = args.multiple::<String>()?.join(" ");
 
-    let channel = msg.channel_id;
-
-    let check = actions::colours::find_from_role_id(&role.id, &*connection);
+    let check = actions::colours::find_from_role_id(&role.id, &connection);
 
     if check.is_some() {
         return Err(CommandError("This colour already exists in the colour list. Check the spelling of the role or mention it directly.".to_string()));
@@ -127,14 +115,14 @@ pub fn add_colour_exec(
             "Fatal error while trying to convert a role its database representation.".to_string(),
         ))?;
 
-    actions::colours::save_record_to_db(colour_record, &*connection).map_err(|e| {
+    actions::colours::save_record_to_db(colour_record, &connection).map_err(|e| {
         CommandError(format!(
-            "Fatal error while trying to save the record into the database. Reason: {:?}",
+            "Fatal error while trying to save the record into the database. Reason: {}",
             e
         ))
     })?;
 
-    // //! Update colour list
+    actions::guilds::update_channel_message(guild, &connection, false)?;
 
     Ok(())
 }
@@ -158,14 +146,14 @@ pub fn remove_colour_exec(
 ) -> Result<(), CommandError> {
     let connection = utils::get_connection_or_panic(&ctx);
 
-    let guild = utils::get_guild_result(&msg)?;
-    let guild = guild.write();
+    let guild_res = utils::get_guild_result(&msg)?;
+    let guild = guild_res.read();
 
-    let guild_record = actions::guilds::convert_guild_to_record(&guild.id, &*connection)
+    let guild_record = actions::guilds::convert_guild_to_record(&guild.id, &connection)
         .ok_or(CommandError("Guild does not exist. This means that you've never created a colour or used any colour related commands before.".to_string()))?;
 
     let colour_name = args.single_quoted::<String>()?;
-    let colour = actions::colours::find_from_name(&colour_name, &guild_record, &*connection)
+    let colour = actions::colours::find_from_name(&colour_name, &guild_record, &connection)
         .ok_or(CommandError(format!(
             "The colour {} could not be found. Check your spelling!",
             colour_name
@@ -173,34 +161,29 @@ pub fn remove_colour_exec(
 
     let keep_discord_role = args.single::<bool>().unwrap_or(false);
 
-    actions::colours::remove_record(&colour, &*connection).map_err(|_| {
+    actions::colours::remove_record(&colour, &connection).map_err(|_| {
         CommandError("Error while trying to delete the record. Aborting!".to_string())
     })?;
+
+    actions::guilds::update_channel_message(guild, &connection, false)?;
 
     if !keep_discord_role {
         let role_id = RoleId(colour.id.to_u64().ok_or(CommandError(
             "Error trying to convert a colour id to discord id.".to_string(),
         ))?);
 
-        let roles = guild.roles.clone();
+        let guild = guild_res.read();
 
-        // ayy
-        // this prevents a deadlock.
-        // << dont remove this >>
-        drop(guild);
+        let roles = guild.roles.clone();
 
         let role = roles
             .get(&role_id)
             .ok_or(CommandError("Error trying to delete the role associated with the colour. The role was probably deleted manually!".to_string()))?;
 
         // << this also prevents a deadlock >>
-        let _ = {
-            let role = role.clone();
-            role.delete()?;
-        };
-    }
 
-    // //! UPDATE THE LIST.
+        role.delete()?;
+    }
 
     Ok(())
 }
@@ -230,7 +213,9 @@ pub fn generate_colour_exec(
     let role_colour = colour.into_role_colour();
 
     let guild = utils::get_guild_result(msg)?;
-    let mut guild = guild.write();
+    let guild = guild.write();
+
+    let guild_id = guild.id.clone();
 
     let new_role = guild.create_role(|role| {
         role.name(&name)
@@ -238,7 +223,7 @@ pub fn generate_colour_exec(
             .mentionable(false)
     })?;
 
-    let colour_struct = actions::colours::convert_role_to_record_struct(name, &new_role, &guild.id)
+    let colour_struct = actions::colours::convert_role_to_record_struct(name, &new_role, &guild_id)
         .ok_or_else(|| {
             let _ = new_role.delete();
             CommandError(
@@ -247,7 +232,7 @@ pub fn generate_colour_exec(
             )
         })?;
 
-    actions::colours::save_record_to_db(colour_struct, &*connection).map_err(|_| {
+    actions::colours::save_record_to_db(colour_struct, &connection).map_err(|_| {
         let _ = new_role.delete();
 
         CommandError(
@@ -256,11 +241,14 @@ pub fn generate_colour_exec(
         )
     })?;
 
-    // //! UPDATE LIST
-
     if !dont_assign {
-        actions::colours::assign_colour_to_user(&msg.author, &mut *guild, &new_role, &*connection)?
+        actions::colours::assign_colour_to_user(&msg.author, guild, &new_role, &connection)?
     }
+
+    let guild = utils::get_guild_result(msg)?;
+    let guild = guild.read();
+
+    actions::guilds::update_channel_message(guild, &connection, false)?;
 
     Ok(())
 }

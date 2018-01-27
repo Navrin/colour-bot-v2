@@ -1,16 +1,40 @@
+use std::default::Default;
+
+use serde_json::Value;
+use serde_json::Map;
+
 use bigdecimal::BigDecimal;
 use db::schema::*;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GuildSettings {}
+
+impl Default for GuildSettings {
+    fn default() -> Self {
+        GuildSettings {}
+    }
+}
 
 #[derive(Queryable, Insertable, Identifiable, Debug)]
 #[table_name = "guilds"]
 pub struct Guild {
     pub id: BigDecimal,
+    pub channel_id: Option<BigDecimal>,
+    settings: Value,
 }
 
-#[derive(Queryable, Insertable, Identifiable, Debug)]
-#[table_name = "users"]
-pub struct User {
-    pub id: BigDecimal,
+impl Guild {
+    pub fn with_id(id: BigDecimal) -> Self {
+        Guild {
+            id,
+            channel_id: None,
+            settings: Value::Object(Map::new()),
+        }
+    }
+
+    pub fn settings(&self) -> GuildSettings {
+        GuildSettings {}
+    }
 }
 
 #[derive(Identifiable, Queryable, Associations, Insertable, Debug)]
