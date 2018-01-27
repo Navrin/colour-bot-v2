@@ -10,7 +10,7 @@ pub fn info(cmd: CreateCommand) -> CreateCommand {
         .exec(info_exec)
 }
 
-pub fn info_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(), CommandError> {
+pub fn info_exec(_: &mut Context, msg: &Message, _: Args) -> Result<(), CommandError> {
     let cache = CACHE.read();
 
     let channel = msg.channel()

@@ -5,3 +5,4 @@
 
 pub mod guilds;
 pub mod colours;
+pub mod channel_help;

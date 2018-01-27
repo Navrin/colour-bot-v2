@@ -1,36 +1,33 @@
+use std::fs;
+
 use failure::Error;
+
+use actions;
 
 use diesel;
 use diesel::result::Error as DieselError;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 
-use db::models::Guild;
+use db::models::{Colour, Guild};
 
 use db::schema::guilds::table as guilds_table;
-use db::schema::guilds;
 use db::schema::guilds::dsl as g;
 
-use serenity::model::guild::{Guild as DiscordGuild, Member as DiscordMember, Role as DiscordRole};
+use serenity::model::guild::{Guild as DiscordGuild, Member as DiscordMember};
 use serenity::model::user::User as DiscordUser;
-use serenity::model::id::GuildId;
-use serenity::model::id::RoleId;
-use serenity::Error as SerenityError;
+use serenity::framework::standard::CommandError;
+use serenity::model::id::{ChannelId, GuildId, MessageId};
 use serenity::prelude::ModelError;
+use serenity::Error as SerenityError;
+use serenity::CACHE;
 
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use bigdecimal::BigDecimal;
+use parking_lot::RwLockReadGuard;
 
 pub fn convert_guild_to_record(guild: &GuildId, connection: &PgConnection) -> Option<Guild> {
     BigDecimal::from_u64(guild.0).and_then(|id| guilds_table.find(id).first(connection).ok())
-}
-
-fn record_exists<T>(query: QueryResult<T>) -> Option<bool> {
-    match query {
-        Ok(_) => Some(true),
-        Err(DieselError::NotFound) => Some(false),
-        Err(_) => None,
-    }
 }
 
 pub enum GuildCheckStatus {
@@ -64,7 +61,7 @@ pub fn check_or_create_guild(id: &BigDecimal, connection: &PgConnection) -> Guil
         Err(DieselError::NotFound) => {
             let id = id.clone();
             let res = diesel::insert_into(guilds_table)
-                .values(&Guild { id })
+                .values(&Guild::with_id(id))
                 .get_result::<Guild>(connection);
 
             GuildCheckStatus::result_to_newly(res)
@@ -79,18 +76,23 @@ pub fn create_new_record_from_guild(
 ) -> Result<Guild, Error> {
     let id = BigDecimal::from_u64(guild.0).ok_or(diesel::result::Error::NotFound)?;
 
-    let new_guild_record = Guild { id };
+    let new_guild_record = Guild::with_id(id);
 
     Ok(diesel::insert_into(guilds_table)
         .values(&new_guild_record)
         .get_result(connection)?)
 }
 
-pub fn convert_user_to_member<'a>(
-    user: &DiscordUser,
-    guild: &'a mut DiscordGuild,
-) -> Option<&'a mut DiscordMember> {
-    guild.members.get_mut(&user.id)
+pub fn update_channel_id(
+    guild: Guild,
+    channel: &ChannelId,
+    connection: &PgConnection,
+) -> Result<Guild, Error> {
+    let id = BigDecimal::from_u64(channel.0).ok_or(diesel::result::Error::NotFound)?;
+
+    Ok(diesel::update(guilds_table.find(guild.id))
+        .set(g::channel_id.eq(id))
+        .get_result::<Guild>(connection)?)
 }
 
 pub fn convert_user_to_member_result<'a>(
@@ -101,4 +103,64 @@ pub fn convert_user_to_member_result<'a>(
         .members
         .get_mut(&user.id)
         .ok_or(ModelError::InvalidUser)
+}
+
+pub fn update_channel_message(
+    guild: RwLockReadGuard<DiscordGuild>,
+    connection: &PgConnection,
+    loudly_fail: bool,
+) -> Result<(), CommandError> {
+    let cache = CACHE.read();
+    let self_id = cache.user.id.0;
+
+    let guild_record = convert_guild_to_record(&guild.id, connection).ok_or(CommandError(
+        "Guild does not exist in the database".to_string(),
+    ))?;
+
+    let colours = actions::colours::find_all(&guild_record, connection).ok_or(CommandError(
+        "Error trying to get list of colours.".to_string(),
+    ))?;
+
+    let path = actions::colours::generate_colour_image(&colours, &guild)?;
+
+    let channel_id_result = guild_record
+        .channel_id
+        .and_then(|id| id.to_u64())
+        .map(|id| ChannelId(id));
+
+    if loudly_fail {
+        channel_id_result.ok_or(CommandError("This server does not have a colour channel set! Add a channel with the `setchannel` command!".to_string()))?;
+    } else {
+        match channel_id_result {
+            Some(ch) => {
+                let old_messages = ch.messages(|filter| filter.limit(50))?
+                    .iter()
+                    .filter(|msg| msg.author.id.0 == self_id)
+                    .map(|msg| msg.id)
+                    .collect::<Vec<MessageId>>();
+
+                if old_messages.len() > 0 {
+                    ch.delete_messages(old_messages)?;
+                }
+
+                ch.send_files(vec![path.as_str()], |msg| {
+                    let names = colours
+                        .iter()
+                        .map(|&Colour { ref name, .. }| name.clone())
+                        .collect::<Vec<_>>();
+
+                    let help_message = actions::channel_help::generate_help_message(names);
+
+                    msg.content(help_message)
+                }).and_then(|_| {
+                    fs::remove_file(path).map_err(|_| {
+                        SerenityError::Other("Error trying to delete the leftover colour image")
+                    })
+                })?;
+            }
+            None => {}
+        }
+    }
+
+    Ok(())
 }
