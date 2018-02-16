@@ -173,14 +173,11 @@ pub fn remove_colour_exec(
         ))?);
 
         let guild = guild_res.read();
-
         let roles = guild.roles.clone();
 
         let role = roles
             .get(&role_id)
             .ok_or(CommandError("Error trying to delete the role associated with the colour. The role was probably deleted manually!".to_string()))?;
-
-        // << this also prevents a deadlock >>
 
         role.delete()?;
     }
@@ -193,9 +190,9 @@ pub fn generate_colour(cmd: CreateCommand) -> CreateCommand {
         .desc("Generates a new colour without needing a role.")
         .guild_only(true)
         .help_available(true)
-        .example("#ff0000 green false")
-        .usage("<colour code> <colour name> [dont assign colour on creation (default false)]")
-        .min_args(2)
+        .example("#ff0000 green")
+        .usage("<colour code> [colour name (will be generated if you dont provide one)]")
+        .min_args(1)
         .exec(generate_colour_exec)
 }
 
@@ -207,8 +204,17 @@ pub fn generate_colour_exec(
     let connection = utils::get_connection_or_panic(ctx);
 
     let colour = args.single::<ParsedColour>()?;
-    let name = args.single_quoted::<String>()?;
-    let dont_assign = args.single::<bool>().unwrap_or(false);
+    let name = args.single_quoted_n::<String>()
+        .map_err(|_| CommandError("Error parsing colour name!".to_string()))
+        .and_then(|name| {
+            if name.len() <= 1 {
+                colour
+                    .find_name()
+                    .ok_or(CommandError("Could not find a colour!".to_string()))
+            } else {
+                Ok(name)
+            }
+        })?;
 
     let role_colour = colour.into_role_colour();
 
@@ -241,9 +247,7 @@ pub fn generate_colour_exec(
         )
     })?;
 
-    if !dont_assign {
-        actions::colours::assign_colour_to_user(&msg.author, guild, &new_role, &connection)?
-    }
+    actions::colours::assign_colour_to_user(&msg.author, guild, &new_role, &connection)?;
 
     let guild = utils::get_guild_result(msg)?;
     let guild = guild.read();
