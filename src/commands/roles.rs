@@ -2,9 +2,6 @@ use utils;
 use actions;
 use colours::ParsedColour;
 
-use std::thread;
-use std::time::Duration;
-
 use serenity::framework::standard::CreateCommand;
 use serenity::model::prelude::Message;
 use serenity::model::id::RoleId;
@@ -60,10 +57,7 @@ pub fn get_colour_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(
         msg.content(message_contents)
     })?;
 
-    thread::spawn(move || {
-        thread::sleep(Duration::from_secs(4));
-        let _ = colour_init_msg.delete();
-    });
+    delay_delete!(colour_init_msg; 4);
 
     let colour_role = actions::colours::search_role(&colour, &discord_guild).ok_or_else(|| {
         let _ = actions::colours::remove_record(&colour, &conn);

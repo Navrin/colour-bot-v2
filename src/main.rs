@@ -24,6 +24,10 @@ extern crate svg;
 extern crate toml;
 extern crate typemap;
 
+// needs to resolve before other modules
+#[macro_use]
+mod macros;
+
 mod emotes;
 mod colours;
 mod config;
@@ -31,9 +35,6 @@ mod commands;
 mod actions;
 mod db;
 mod utils;
-
-use std::thread;
-use std::time::Duration;
 
 use serenity::Client;
 use serenity::client::EventHandler;
@@ -60,20 +61,22 @@ impl EventHandler for Handler {
     // TODO: impl channel delete check
     // TODO: impl guild join setup and permissions check
 
+    /// Message handler,
+    /// should be managing the colour channel and the cleaning of the channel.
     fn message(&self, mut ctx: Context, message: Message) {
-        let starts_with_prefix = PREFIX_LIST
-            .iter()
-            .map(|string| string.clone().to_string())
-            .map(|prefix| message.content.starts_with(&prefix))
-            .any(|id| id);
+        // let starts_with_prefix = PREFIX_LIST
+        //     .iter()
+        //     .map(|string| string.clone().to_string())
+        //     .map(|prefix| message.content.starts_with(&prefix))
+        //     .any(|id| id);
 
-        if message.author.bot || starts_with_prefix {
+        if message.author.bot {
             return;
         }
 
         let connection = utils::get_connection_or_panic(&ctx);
 
-        let colour_chan = utils::get_guild_result(&message)
+        let colour_channel = utils::get_guild_result(&message)
             .ok()
             .and_then(|guild| {
                 let id = guild.read().id;
@@ -83,10 +86,11 @@ impl EventHandler for Handler {
             .and_then(|id| id.to_u64());
 
         let channel_id = message.channel_id;
-        let message_channel_id = message.channel_id.0;
+        let channel_id_inner = message.channel_id.0;
 
-        match colour_chan {
-            Some(colour_channel_id) if message_channel_id == colour_channel_id => {
+        match colour_channel {
+            Some(colour_channel_inner) if channel_id_inner == colour_channel_inner => {
+                // fake args object to stimulate calling a command.
                 let args = Args::new(&message.content, &[" ".to_string()]);
 
                 let result = commands::roles::get_colour_exec(&mut ctx, &message, args);
@@ -96,10 +100,7 @@ impl EventHandler for Handler {
                 let _ = result
                     .map(|_| {
                         let _ = message.react(emotes::GREEN_TICK);
-                        thread::spawn(move || {
-                            thread::sleep(Duration::from_secs(2));
-                            let _ = message.delete();
-                        });
+                        delay_delete!(message; 2);
                     })
                     .map_err(|CommandError(m)| {
                         let _ = message_clone.react(emotes::RED_CROSS);
@@ -108,10 +109,7 @@ impl EventHandler for Handler {
                                 msg.content(format!("Couldn't assign a colour due to: {}", m))
                             })
                             .map(|msg| {
-                                thread::spawn(move || {
-                                    thread::sleep(Duration::from_secs(8));
-                                    let _ = msg.delete();
-                                });
+                                delay_delete!(msg; 8);
                             });
                     });
             }
@@ -133,7 +131,7 @@ fn create_framework() -> StandardFramework {
 
     framework
         .configure(|cfg| {
-            cfg.prefixes(PREFIX_LIST.iter())
+            cfg.prefixes(&PREFIX_LIST)
                 .ignore_bots(true)
                 .on_mention(true)
                 .allow_whitespace(true)
@@ -155,7 +153,7 @@ fn create_framework() -> StandardFramework {
             group.command("info", commands::utils::info)
         })
         .before(|_ctx, msg, name| {
-            if name == HELP_CMD_NAME {
+            if name.to_lowercase() == HELP_CMD_NAME {
                 let msg = msg.clone();
                 let _ = msg.react(emotes::RED_CROSS);
 
@@ -164,11 +162,7 @@ fn create_framework() -> StandardFramework {
                         msg.content("This command does not work outside of a DM to prevent spam, please DM me instead!")
                     })
                     .map(|res| {
-                        thread::spawn(move || {
-                            thread::sleep(Duration::from_secs(8));
-                            let _ = res.delete();
-                            let _ = msg.delete();
-                        });
+                        delay_delete!(res, msg; 8);
                     });
 
                 false
@@ -198,20 +192,13 @@ fn create_framework() -> StandardFramework {
                             ))
                         })
                         .map(|reply| {
-                            thread::spawn(move || {
-                                thread::sleep(Duration::from_secs(8));
-
-                                let _ = reply.delete();
-                            });
+                            delay_delete!(reply; 8);
                         });
                 }
             };
 
             let msg = msg.clone();
-            thread::spawn(move || {
-                thread::sleep(Duration::from_secs(8));
-                let _ = msg.delete();
-            });
+            delay_delete!(msg; 8);
         })
         .on_dispatch_error(|_, msg, error| {
             let _ = msg.react(emotes::RED_CROSS);
@@ -236,11 +223,7 @@ fn create_framework() -> StandardFramework {
                 let _ = msg.channel_id
                     .send_message(|m| m.content(contents))
                     .map(|reply| {
-                        thread::spawn(move || {
-                            thread::sleep(Duration::from_secs(8));
-                            let _ = reply.delete();
-                            let _ = msg.delete();
-                        });
+                        delay_delete!(reply, msg; 8);
                     });
             }
         })

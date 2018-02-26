@@ -2,8 +2,6 @@ use actions;
 use utils;
 
 use std::fs;
-use std::thread;
-use std::time::Duration;
 
 use serenity::framework::standard::{CommandError, CreateCommand};
 use serenity::model::prelude::Message;
@@ -60,10 +58,7 @@ pub fn list_colours_exec(
         msg.content("A copy of the colour list has been sent to your DMs. To keep one in the server, set up a colour channel.")
     })?;
 
-    thread::spawn(move || {
-        thread::sleep(Duration::from_secs(6));
-        let _ = reply.delete();
-    });
+    delay_delete!(reply; 6);
 
     Ok(())
 }
