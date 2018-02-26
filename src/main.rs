@@ -171,31 +171,30 @@ fn create_framework() -> StandardFramework {
             }
         })
         .after(|_ctx, msg, cmd_name, res| {
-            match res {
-                Ok(_) => {
-                    let result = msg.react(emotes::GREEN_TICK);
+            let _ = res.map(|_| {
+                let result = msg.react(emotes::GREEN_TICK);
 
-                    let _ = result.map_err(|_| {
-                        let _ = msg.channel_id.send_message(|msg| {
-                            msg.content("Error trying to react to a message. Check permissions for the bot!")
-                        });
+                let _ = result.map_err(|_| {
+                    let _ = msg.channel_id.send_message(|msg| {
+                        msg.content(
+                            "Error trying to react to a message. Check permissions for the bot!",
+                        )
                     });
-                }
-                Err(CommandError(err)) => {
-                    let _ = msg.react(emotes::RED_CROSS);
+                });
+            }).map_err(|CommandError(err)| {
+                let _ = msg.react(emotes::RED_CROSS);
 
-                    let _ = msg.channel_id
-                        .send_message(|msg| {
-                            msg.content(format!(
-                                "There was an error running the last command ({}):\n\n{}",
-                                cmd_name, err
-                            ))
-                        })
-                        .map(|reply| {
-                            delay_delete!(reply; 8);
-                        });
-                }
-            };
+                let _ = msg.channel_id
+                    .send_message(|msg| {
+                        msg.content(format!(
+                            "There was an error running the last command ({}):\n\n{}",
+                            cmd_name, err
+                        ))
+                    })
+                    .map(|reply| {
+                        delay_delete!(reply; 8);
+                    });
+            });
 
             let msg = msg.clone();
             delay_delete!(msg; 8);
