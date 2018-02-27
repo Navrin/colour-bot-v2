@@ -1,4 +1,4 @@
-const HELP_MESSAGE_FOR_CHANNEL: &'static str = "
+const HELP_MESSAGE_FOR_CHANNEL: &str = "
 **To get a colour:**
 
 1) Pick the colour you want on the list.

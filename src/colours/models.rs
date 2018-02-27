@@ -58,9 +58,7 @@ impl<'a> ParsedColour<'a> {
     }
 
     pub fn to_hex(&self) -> u64 {
-        let rgbc = self.b as u64 | (self.g as u64) << 8 | (self.r as u64) << 16;
-
-        rgbc
+        self.b as u64 | (self.g as u64) << 8 | (self.r as u64) << 16
     }
 
     pub fn find_nearest(&self, colours: &[Self]) -> Option<Self> {

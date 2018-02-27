@@ -7,7 +7,7 @@ use failure::Error;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub database: DatabaseConfig, // TODO
+    pub database: DatabaseConfig,
     pub discord: DiscordConfig,
 }
 

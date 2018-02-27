@@ -46,3 +46,28 @@ pub fn get_guild_result(msg: &Message) -> Result<Arc<RwLock<Guild>>, CommandErro
     msg.guild()
         .ok_or(CommandError("Could not find guild. This command only works in a guild, if you are a in a PM / Group, please only use commands that do not require any roles".to_string()))
 }
+
+use typemap::Key;
+
+pub trait Contextable {
+    fn with_item<T, E, F>(&self, cb: F) -> Result<(), E>
+    where
+        T: Key,
+        F: Fn(&mut T::Value) -> Result<(), E>,
+        T::Value: Send + Sync;
+}
+
+impl Contextable for Context {
+    fn with_item<T, E, F>(&self, cb: F) -> Result<(), E>
+    where
+        T: Key,
+        F: Fn(&mut T::Value) -> Result<(), E>,
+        T::Value: Send + Sync,
+    {
+        let mut data = self.data.lock();
+        let item = data.get_mut::<T>()
+            .expect("Failure. Data missing from typemap.");
+
+        cb(item)
+    }
+}

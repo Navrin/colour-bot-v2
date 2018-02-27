@@ -1,2 +1,2 @@
-pub const GREEN_TICK: &'static str = "✅";
-pub const RED_CROSS: &'static str = "❌";
+pub const GREEN_TICK: &str = "✅";
+pub const RED_CROSS: &str = "❌";

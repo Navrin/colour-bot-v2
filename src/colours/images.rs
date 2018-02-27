@@ -14,7 +14,7 @@ use svg::node::Text;
 use svg::Document;
 use svg::node::element::{Group, Rectangle, Text as TextEl};
 
-const DARK_THEME_BACKGROUND: &'static str = "#36393e";
+const DARK_THEME_BACKGROUND: &str = "#36393e";
 
 const TOP_PADDING: usize = 50;
 
@@ -194,9 +194,7 @@ impl ColourListBuilder {
             })
             .collect::<Vec<Group>>();
 
-        let document = list.iter().fold(document, |doc, now| doc.add(now.clone()));
-
-        document
+        list.iter().fold(document, |doc, now| doc.add(now.clone()))
     }
 
     pub fn transform_colours_to_sections(

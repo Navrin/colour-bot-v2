@@ -28,6 +28,7 @@ extern crate typemap;
 #[macro_use]
 mod macros;
 
+mod cleaner;
 mod emotes;
 mod colours;
 mod config;
@@ -35,6 +36,12 @@ mod commands;
 mod actions;
 mod db;
 mod utils;
+
+use utils::Contextable;
+use cleaner::Cleaner;
+
+use std::thread;
+use std::time::Duration;
 
 use serenity::Client;
 use serenity::client::EventHandler;
@@ -44,12 +51,13 @@ use serenity::framework::standard::help_commands::with_embeds;
 use serenity::framework::standard::{CommandError, DispatchError};
 use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
+use serenity::model::id::ChannelId;
 use serenity::prelude::Context;
 
 use num_traits::ToPrimitive;
 
-const PREFIX_LIST: [&'static str; 5] = ["!c", "!colour", "!color", "!colours", "!colors"];
-const HELP_CMD_NAME: &'static str = "help";
+const PREFIX_LIST: [&str; 5] = ["!c", "!colour", "!color", "!colours", "!colors"];
+const HELP_CMD_NAME: &str = "help";
 
 // TODO: !! UPDATE THE COLOUR LIST WHEN COLOURS CHANGE.
 // WRITE A HELP MESSAGE AND HAVE IT SENT WITH THE COLOUR MESSAGE SO IT DOESN'T HAVE TO BE TRACKED:
@@ -64,11 +72,11 @@ impl EventHandler for Handler {
     /// Message handler,
     /// should be managing the colour channel and the cleaning of the channel.
     fn message(&self, mut ctx: Context, message: Message) {
-        // let starts_with_prefix = PREFIX_LIST
-        //     .iter()
-        //     .map(|string| string.clone().to_string())
-        //     .map(|prefix| message.content.starts_with(&prefix))
-        //     .any(|id| id);
+        let starts_with_prefix = PREFIX_LIST
+            .iter()
+            .map(|string| string.clone().to_string().to_lowercase())
+            .map(|prefix| message.content.to_lowercase().starts_with(&prefix))
+            .any(|id| id);
 
         if message.author.bot {
             return;
@@ -76,7 +84,7 @@ impl EventHandler for Handler {
 
         let connection = utils::get_connection_or_panic(&ctx);
 
-        let colour_channel = utils::get_guild_result(&message)
+        let colour_channel_inner_opt = utils::get_guild_result(&message)
             .ok()
             .and_then(|guild| {
                 let id = guild.read().id;
@@ -88,32 +96,78 @@ impl EventHandler for Handler {
         let channel_id = message.channel_id;
         let channel_id_inner = message.channel_id.0;
 
-        match colour_channel {
+        match colour_channel_inner_opt {
             Some(colour_channel_inner) if channel_id_inner == colour_channel_inner => {
-                // fake args object to stimulate calling a command.
-                let args = Args::new(&message.content, &[" ".to_string()]);
+                // dont parse it as a colour if it's possibly a command.
+                if !starts_with_prefix {
+                    // fake args object to stimulate calling a command.
+                    let args = Args::new(&message.content, &[" ".to_string()]);
 
-                let result = commands::roles::get_colour_exec(&mut ctx, &message, args);
+                    let result = commands::roles::get_colour_exec(&mut ctx, &message, args);
 
-                let message_clone = message.clone();
+                    let message_clone = message.clone();
 
-                let _ = result
-                    .map(|_| {
-                        let _ = message.react(emotes::GREEN_TICK);
-                        delay_delete!(message; 2);
-                    })
-                    .map_err(|CommandError(m)| {
-                        let _ = message_clone.react(emotes::RED_CROSS);
-                        let _ = channel_id
-                            .send_message(|msg| {
-                                msg.content(format!("Couldn't assign a colour due to: {}", m))
-                            })
-                            .map(|msg| {
-                                delay_delete!(msg; 8);
-                            });
-                    });
+                    let _ = result
+                        .map(|_| {
+                            let _ = message.react(emotes::GREEN_TICK);
+                            delay_delete!(message; 2);
+                        })
+                        .map_err(|CommandError(m)| {
+                            let _ = message_clone.react(emotes::RED_CROSS);
+                            let _ = channel_id
+                                .send_message(|msg| {
+                                    msg.content(format!("Couldn't assign a colour due to: {}", m))
+                                })
+                                .map(|msg| {
+                                    delay_delete!(msg; 8);
+                                });
+                        });
+                }
+
+                // cleaner procedure, will execute 6 seconds after the message event ends.
+                // ?HACKY? relies on the .before method of the framework to be called before this does
+                // due to having no access to commands that are invoked with the right prefix but have no way
+                // to check if they're legit commands or not.
+                // Advantages of this sweep approach is that bot messages and other anomalies in the channels will be purged.
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_secs(6));
+                    let _ = ctx.with_item::<Cleaner, serenity::Error, _>(
+                        |cleaner: &mut Cleaner| {
+                            let colour_channel = ChannelId(channel_id_inner);
+                            // collect a few messages and verify if they're commands or not.
+                            // otherwise they're just loiting the channel and will be PURGED
+                            let messages = colour_channel.messages(|m| m.limit(5))?;
+                            let self_id =
+                                serenity::utils::with_cache(|cache| cache.user.id.clone());
+
+                            messages
+                                .iter()
+                                .filter(|msg| {
+                                    // dont purge if
+                                    // A) already in the hashset of (good) messages
+                                    // B) from (self)
+
+                                    // TODO: There's totally a better way to do this, but my brain is having a blank and I just did this
+                                    // fix it later I guess
+
+                                    if msg.author.id == self_id {
+                                        false
+                                    } else if !cleaner.contains(&msg.id) {
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                })
+                                .for_each(|msg| {
+                                    let _ = msg.delete();
+                                });
+
+                            Ok(())
+                        },
+                    );
+                });
             }
-            Some(_) | None => {}
+            _ => {}
         }
     }
 
@@ -152,7 +206,7 @@ fn create_framework() -> StandardFramework {
         .group("utils", |group| {
             group.command("info", commands::utils::info)
         })
-        .before(|_ctx, msg, name| {
+        .before(|ctx, msg, name| {
             if name.to_lowercase() == HELP_CMD_NAME {
                 let msg = msg.clone();
                 let _ = msg.react(emotes::RED_CROSS);
@@ -167,10 +221,22 @@ fn create_framework() -> StandardFramework {
 
                 false
             } else {
+                // this will prevent the message from being sweeped by the bot.
+                // not that it should be in the channel after the timer...
+                let _ = ctx.with_item::<Cleaner, (), _>(|cleaner| {
+                    let _ = cleaner.insert(msg.id);
+                    Ok(())
+                });
                 true
             }
         })
-        .after(|_ctx, msg, cmd_name, res| {
+        .after(|ctx, msg, cmd_name, res| {
+            // we're done with this message, sweep it.
+            let _ = ctx.with_item::<Cleaner, (), _>(|cleaner| {
+                let _ = cleaner.remove(&msg.id);
+                Ok(())
+            });
+
             let _ = res.map(|_| {
                 let result = msg.react(emotes::GREEN_TICK);
 
@@ -241,6 +307,7 @@ fn main() {
     {
         let mut data = client.data.lock();
         data.insert::<db::DB>(pool);
+        data.insert::<Cleaner>(Cleaner::new());
     }
 
     client.with_framework(create_framework());
