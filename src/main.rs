@@ -49,7 +49,7 @@ use serenity::framework::StandardFramework;
 use serenity::framework::standard::Args;
 use serenity::framework::standard::help_commands::with_embeds;
 use serenity::framework::standard::{CommandError, DispatchError};
-use serenity::model::channel::Message;
+use serenity::model::channel::{Channel, Message};
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::prelude::Context;
@@ -96,7 +96,9 @@ impl EventHandler for Handler {
         let channel_id = message.channel_id;
         let channel_id_inner = message.channel_id.0;
 
+        // not an if let because if let doesn't support conditions. for some reason :|
         match colour_channel_inner_opt {
+            // check if the message is actually in the colour channel.
             Some(colour_channel_inner) if channel_id_inner == colour_channel_inner => {
                 // dont parse it as a colour if it's possibly a command.
                 if !starts_with_prefix {
@@ -207,7 +209,16 @@ fn create_framework() -> StandardFramework {
             group.command("info", commands::utils::info)
         })
         .before(|ctx, msg, name| {
+            // culling help messages because they can flood the chat and dont delete themselves,
+            // meaning they can linger in the colour channel.
+            // therefore help messages only work in the dms.
+            let channel_opt = msg.channel_id.get();
+
             if name.to_lowercase() == HELP_CMD_NAME {
+                if let Ok(Channel::Private(..)) = channel_opt {
+                    return true;
+                };
+
                 let msg = msg.clone();
                 let _ = msg.react(emotes::RED_CROSS);
 
@@ -262,6 +273,7 @@ fn create_framework() -> StandardFramework {
                     });
             });
 
+            // &msg doesn't last long enough to be moved into a new thread so clone it
             let msg = msg.clone();
             delay_delete!(msg; 8);
         })

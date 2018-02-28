@@ -49,6 +49,8 @@ pub fn get_guild_result(msg: &Message) -> Result<Arc<RwLock<Guild>>, CommandErro
 
 use typemap::Key;
 
+/// sick shorthand for using a context item and then closing it afterwards.
+/// TODO: fix weird type imference problem with the <item, (), _>
 pub trait Contextable {
     fn with_item<T, E, F>(&self, cb: F) -> Result<(), E>
     where
