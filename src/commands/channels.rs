@@ -7,6 +7,7 @@ use serenity::framework::standard::Args;
 use serenity::model::permissions::Permissions;
 use serenity::prelude::Context;
 
+/// Sets the tracked discord channel, where colour requests will be made and colour images will be posted.
 pub fn set_channel(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["chan", "channel", "setchan"])
         .desc("Sets the tracked channel for the guild.")

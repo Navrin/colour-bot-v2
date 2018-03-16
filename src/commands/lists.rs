@@ -9,6 +9,7 @@ use serenity::framework::standard::Args;
 use serenity::Error as SerenityError;
 use serenity::prelude::Context;
 
+/// Sends the colour list into the user's DMs.
 pub fn list_colours(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["listc", "showall", "viewall"])
         .desc("Displays a list of all the colours in an image format.")

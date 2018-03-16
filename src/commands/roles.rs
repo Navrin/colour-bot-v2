@@ -11,6 +11,7 @@ use serenity::framework::standard::{Args, CommandError};
 
 use num_traits::cast::ToPrimitive;
 
+/// Most basic but most important of commands, gives the user the colour they requested, or not if it doesn't exist.
 pub fn get_colour(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["getc", "getcolour", "getcolor", "colour", "color"])
         .desc("Finds a colour role from a name and assigns it to you.")
@@ -147,11 +148,12 @@ pub fn remove_colour_exec(
         .ok_or(CommandError("Guild does not exist. This means that you've never created a colour or used any colour related commands before.".to_string()))?;
 
     let colour_name = args.single_quoted::<String>()?;
-    let colour = actions::colours::find_from_name(&colour_name, &guild_record, &connection)
-        .ok_or(CommandError(format!(
+    let colour = actions::colours::find_from_name(&colour_name, &guild_record, &connection).ok_or(
+        CommandError(format!(
             "The colour {} could not be found. Check your spelling!",
             colour_name
-        )))?;
+        )),
+    )?;
 
     let keep_discord_role = args.single::<bool>().unwrap_or(false);
 

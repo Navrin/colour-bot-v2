@@ -35,6 +35,7 @@ impl Error for ColourParseError {
     }
 }
 
+/// Represents colours for this bot, can be converted to the discord version, also has a naming component.
 #[derive(Clone, Debug)]
 pub struct ParsedColour<'a> {
     pub name: Option<&'a str>,

@@ -26,10 +26,12 @@ use num_traits::cast::{FromPrimitive, ToPrimitive};
 use bigdecimal::BigDecimal;
 use parking_lot::RwLockReadGuard;
 
+/// Turns a discord guild into a db representation.
 pub fn convert_guild_to_record(guild: &GuildId, connection: &PgConnection) -> Option<Guild> {
     BigDecimal::from_u64(guild.0).and_then(|id| guilds_table.find(id).first(connection).ok())
 }
 
+/// Guild status used for finding / creating new guild records.
 pub enum GuildCheckStatus {
     AlreadyExists(Guild),
     NewlyCreated(Guild),
@@ -37,6 +39,7 @@ pub enum GuildCheckStatus {
 }
 
 impl GuildCheckStatus {
+    /// assuming having a guild and creating a new one is intended behaviour.
     pub fn to_result(self) -> Result<Guild, DieselError> {
         match self {
             GuildCheckStatus::AlreadyExists(g) => Ok(g),
@@ -45,6 +48,7 @@ impl GuildCheckStatus {
         }
     }
 
+    /// turns a query result into a `NewlyCreated`
     pub fn result_to_newly(result: QueryResult<Guild>) -> GuildCheckStatus {
         match result {
             Ok(v) => GuildCheckStatus::NewlyCreated(v),
@@ -53,6 +57,7 @@ impl GuildCheckStatus {
     }
 }
 
+/// Creates a new guild from and ID or returns the old one.
 pub fn check_or_create_guild(id: &BigDecimal, connection: &PgConnection) -> GuildCheckStatus {
     let query = guilds_table.find(id).get_result::<Guild>(connection);
 
@@ -70,6 +75,8 @@ pub fn check_or_create_guild(id: &BigDecimal, connection: &PgConnection) -> Guil
     }
 }
 
+/// Converts a GuildId into a record representation.
+/// *Note:* unlike the similar colour command, this also saves the guild into the db.
 pub fn create_new_record_from_guild(
     guild: &GuildId,
     connection: &PgConnection,
@@ -83,6 +90,7 @@ pub fn create_new_record_from_guild(
         .get_result(connection)?)
 }
 
+/// Finds the given guild, then changes the `channel_id` attribute
 pub fn update_channel_id(
     guild: Guild,
     channel: &ChannelId,
@@ -95,6 +103,7 @@ pub fn update_channel_id(
         .get_result::<Guild>(connection)?)
 }
 
+/// Converts a discord user model into a discord member
 pub fn convert_user_to_member_result<'a>(
     user: &DiscordUser,
     guild: &'a mut DiscordGuild,
@@ -105,6 +114,7 @@ pub fn convert_user_to_member_result<'a>(
         .ok_or(ModelError::InvalidUser)
 }
 
+/// updates the help message and colour list in the colour channel.
 pub fn update_channel_message(
     guild: RwLockReadGuard<DiscordGuild>,
     connection: &PgConnection,

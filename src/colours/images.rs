@@ -26,12 +26,7 @@ const LIST_COLUMN_WIDTH: usize = 500;
 #[derive(Clone, Debug)]
 pub struct Name(pub String);
 
-// Same here, too easy to mix up a height and a width, so opaquely typed.
 #[derive(Clone)]
-pub struct Width(pub usize);
-#[derive(Clone)]
-pub struct Height(pub usize);
-
 pub enum ColourListType {
     BasicList,
 }
@@ -69,6 +64,8 @@ impl From<ReSvgError> for ColourBuilderError {
     }
 }
 
+/// In the rust rewrite, the colour bot now uses an SVG based render system using cario.
+/// *TODO:* Figure out how to make cario work on windows, currently cant compile atm, find out a solution and put it in the docs
 pub struct ColourListBuilder {
     list_type: ColourListType,
     dual_colour: bool,
