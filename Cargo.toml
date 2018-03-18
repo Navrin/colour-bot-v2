@@ -5,7 +5,11 @@ version = "0.1.0"
 
 [dependencies]
 bigdecimal = "0.0.10"
+crossbeam-channel = "0.1.2"
 failure = "0.1.1"
+futures = ""
+futures-cpupool = "0.1.8"
+lazy_static = "1.0.0"
 num-traits = "0.1.41"
 palette = "0.2.1"
 parking_lot = "0.5.3"
@@ -31,6 +35,13 @@ features = [
     "serde_json",
 ]
 version = "1.0.0"
+
+[dependencies.parallel-event-emitter]
+features = [
+    "default",
+    "conservative_impl_trait",
+]
+version = "0.2.4"
 
 [dependencies.r2d2-diesel]
 version = "1.0.0"

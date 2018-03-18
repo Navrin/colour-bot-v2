@@ -4,6 +4,8 @@
 
 extern crate bigdecimal;
 extern crate cairo;
+extern crate futures;
+extern crate parallel_event_emitter;
 #[macro_use]
 extern crate diesel;
 extern crate failure;
@@ -18,7 +20,11 @@ extern crate resvg;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate crossbeam_channel;
 extern crate serde_json;
+#[macro_use]
+extern crate lazy_static;
+extern crate futures_cpupool;
 extern crate serenity;
 extern crate svg;
 extern crate toml;
@@ -34,11 +40,13 @@ mod colours;
 mod config;
 mod commands;
 mod actions;
+mod collector;
 mod db;
 mod utils;
 
 use utils::Contextable;
 use cleaner::Cleaner;
+use collector::{Collector, CollectorItem};
 
 use std::thread;
 use std::time::Duration;
@@ -54,7 +62,15 @@ use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::prelude::Context;
 
+use futures::prelude::*;
+
+use futures_cpupool::CpuPool;
+
 use num_traits::ToPrimitive;
+
+lazy_static! {
+    static ref COLLECTOR: Collector = { Collector::new() };
+}
 
 const PREFIX_LIST: [&str; 5] = ["!c", "!colour", "!color", "!colours", "!colors"];
 const HELP_CMD_NAME: &str = "help";
@@ -77,6 +93,18 @@ impl EventHandler for Handler {
             .map(|string| string.clone().to_string().to_lowercase())
             .map(|prefix| message.content.to_lowercase().starts_with(&prefix))
             .any(|id| id);
+
+        let emitted_message = message.clone();
+
+        thread::spawn(|| {
+            let mut coll = COLLECTOR.0.lock().unwrap();
+
+            let computation = coll.emit_value(CollectorItem::Message, emitted_message);
+            let x = computation.wait();
+            println!("{:?}", x);
+
+            drop(coll);
+        });
 
         if message.author.bot {
             return;
@@ -206,7 +234,37 @@ fn create_framework() -> StandardFramework {
             group.command("setchannel", commands::channels::set_channel)
         })
         .group("utils", |group| {
-            group.command("info", commands::utils::info)
+            group
+                .command("info", commands::utils::info)
+                .command("polltest", |cmd| {
+                    cmd.exec(|ctx, msg, _| {
+                        let msg = msg.clone();
+                        let msg_copy = msg.clone();
+
+                        let future = COLLECTOR.begin_blocking_collect(
+                            move |future_message| future_message.channel_id == msg.channel_id,
+                            5,
+                        );
+
+                        thread::spawn(move || {
+                            let computation = future.take(5).collect().map(|r| {
+                                msg_copy.channel_id.send_message(|c| {
+                                    c.content(format!(
+                                        "Waited for 5 messages, got {}",
+                                        r.iter()
+                                            .map(|r| r.content.clone())
+                                            .collect::<Vec<String>>()
+                                            .join(", ")
+                                    ))
+                                })
+                            });
+
+                            computation.wait();
+                        });
+
+                        Ok(())
+                    })
+                })
         })
         .before(|ctx, msg, name| {
             // culling help messages because they can flood the chat and dont delete themselves,
