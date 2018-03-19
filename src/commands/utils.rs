@@ -4,15 +4,13 @@ use serenity::client::Context;
 use serenity::framework::standard::{Args, CommandError};
 use serenity::utils::Colour;
 use serenity::CACHE;
-use utils::Contextable;
-use collector::Collector;
 
 pub fn info(cmd: CreateCommand) -> CreateCommand {
     cmd.desc("Displays some useful infomation about the bot in embed form.")
         .exec(info_exec)
 }
 
-pub fn info_exec(ctx: &mut Context, msg: &Message, _: Args) -> Result<(), CommandError> {
+pub fn info_exec(_ctx: &mut Context, msg: &Message, _: Args) -> Result<(), CommandError> {
     let cache = CACHE.read();
 
     let channel = msg.channel()

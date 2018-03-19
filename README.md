@@ -9,8 +9,8 @@
 
 ### Interactivity
 
-- [ ] Can await a message from a user.
-- [ ] Can await a reaction from a user.
+- [x] Can await a message from a user.
+- [x] Can await a reaction from a user.
 
 ### Colours
 

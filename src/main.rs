@@ -46,7 +46,7 @@ mod utils;
 
 use utils::Contextable;
 use cleaner::Cleaner;
-use collector::{Collector, CollectorItem};
+use collector::{Collector, CollectorItem, CollectorValue};
 
 use std::thread;
 use std::time::Duration;
@@ -57,14 +57,12 @@ use serenity::framework::StandardFramework;
 use serenity::framework::standard::Args;
 use serenity::framework::standard::help_commands::with_embeds;
 use serenity::framework::standard::{CommandError, DispatchError};
-use serenity::model::channel::{Channel, Message};
+use serenity::model::channel::{Channel, Message, Reaction};
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::prelude::Context;
 
 use futures::prelude::*;
-
-use futures_cpupool::CpuPool;
 
 use num_traits::ToPrimitive;
 
@@ -85,6 +83,22 @@ impl EventHandler for Handler {
     // TODO: impl channel delete check
     // TODO: impl guild join setup and permissions check
 
+    fn reaction_add(&self, _: Context, react: Reaction) {
+        if let Ok(user) = react.user() {
+            if user.bot {
+                return;
+            }
+        }
+
+        thread::spawn(move || {
+            let mut coll = COLLECTOR.0.lock().unwrap();
+
+            coll.emit_value(CollectorItem::Reaction, CollectorValue::Reaction(react))
+                .wait()
+                .expect("Error emitting reaction to Collector");
+        });
+    }
+
     /// Message handler,
     /// should be managing the colour channel and the cleaning of the channel.
     fn message(&self, mut ctx: Context, message: Message) {
@@ -96,19 +110,20 @@ impl EventHandler for Handler {
 
         let emitted_message = message.clone();
 
-        thread::spawn(|| {
-            let mut coll = COLLECTOR.0.lock().unwrap();
-
-            let computation = coll.emit_value(CollectorItem::Message, emitted_message);
-            let x = computation.wait();
-            println!("{:?}", x);
-
-            drop(coll);
-        });
-
         if message.author.bot {
             return;
         }
+        thread::spawn(move || {
+            let mut coll = COLLECTOR.0.lock().unwrap();
+
+            let computation = coll.emit_value(
+                CollectorItem::Message,
+                CollectorValue::Message(emitted_message),
+            );
+            computation
+                .wait()
+                .expect("Error emitting message to Collector");
+        });
 
         let connection = utils::get_connection_or_panic(&ctx);
 
@@ -234,37 +249,7 @@ fn create_framework() -> StandardFramework {
             group.command("setchannel", commands::channels::set_channel)
         })
         .group("utils", |group| {
-            group
-                .command("info", commands::utils::info)
-                .command("polltest", |cmd| {
-                    cmd.exec(|ctx, msg, _| {
-                        let msg = msg.clone();
-                        let msg_copy = msg.clone();
-
-                        let future = COLLECTOR.begin_blocking_collect(
-                            move |future_message| future_message.channel_id == msg.channel_id,
-                            5,
-                        );
-
-                        thread::spawn(move || {
-                            let computation = future.take(5).collect().map(|r| {
-                                msg_copy.channel_id.send_message(|c| {
-                                    c.content(format!(
-                                        "Waited for 5 messages, got {}",
-                                        r.iter()
-                                            .map(|r| r.content.clone())
-                                            .collect::<Vec<String>>()
-                                            .join(", ")
-                                    ))
-                                })
-                            });
-
-                            computation.wait();
-                        });
-
-                        Ok(())
-                    })
-                })
+            group.command("info", commands::utils::info)
         })
         .before(|ctx, msg, name| {
             // culling help messages because they can flood the chat and dont delete themselves,
