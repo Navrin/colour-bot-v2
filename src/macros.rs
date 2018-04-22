@@ -13,3 +13,16 @@ macro_rules! delay_delete {
         });
     };
 }
+
+#[macro_export]
+macro_rules! reply_error_closure {
+    ($msg:expr) => {{
+        let msg = $msg.clone();
+
+        || {
+            use serenity::framework::standard::CommandError;
+            delay_delete!(msg; 5);
+            CommandError("No reply recieved within 15 seconds, giving up!".to_string())
+        }
+    }};
+}

@@ -1,27 +1,29 @@
 use actions::guilds;
 
 use diesel;
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::prelude::*;
 use diesel::BelongingToDsl;
 
-use db::models::Guild;
-use db::models::Colour;
+use colours::models::ParsedColour;
 
-use db::schema::colours::table as colours_table;
+use db::models::Colour;
+use db::models::Guild;
+
 use db::schema::colours as colours_schema;
 use db::schema::colours::dsl as c;
+use db::schema::colours::table as colours_table;
 
-use serenity::model::guild::{Guild as DiscordGuild, Member as DiscordMember, Role as DiscordRole};
-use serenity::model::user::User as DiscordUser;
-use serenity::model::id::{GuildId, RoleId};
-use serenity::Error as SerenityError;
-use serenity::prelude::ModelError;
 use serenity::framework::standard::CommandError;
+use serenity::model::guild::{Guild as DiscordGuild, Member as DiscordMember, Role as DiscordRole};
+use serenity::model::id::{GuildId, RoleId};
+use serenity::model::user::User as DiscordUser;
+use serenity::prelude::ModelError;
 use serenity::utils::Colour as DiscordColour;
+use serenity::Error as SerenityError;
 
-use num_traits::cast::{FromPrimitive, ToPrimitive};
 use bigdecimal::BigDecimal;
+use num_traits::cast::{FromPrimitive, ToPrimitive};
 use parking_lot::RwLockWriteGuard;
 
 use colours::images::Name;
@@ -199,4 +201,51 @@ pub fn generate_colour_image(
         .ok_or(CommandError(
             "The image path doesn't actually exist. This a bit of a f***up. Sorry.".to_string(),
         ))
+}
+
+pub struct UpdateActionParams<'a> {
+    pub colour: Colour,
+    pub new_colour: Option<ParsedColour<'a>>,
+    pub new_name: Option<&'a str>,
+    pub change_role_name: bool,
+    pub guild: &'a DiscordGuild,
+}
+
+pub fn update_colour_and_role<'a>(
+    UpdateActionParams {
+        colour,
+        new_colour,
+        new_name,
+        change_role_name,
+        guild,
+    }: UpdateActionParams<'a>,
+    connection: &PgConnection,
+) -> Result<Colour, CommandError> {
+    let role = search_role(&colour, guild).ok_or(CommandError(
+        "Couldn't find the colour in the guild!".to_string(),
+    ))?;
+
+    role.edit(|role_edit| {
+        role_edit
+            .name(match new_name {
+                Some(name) if change_role_name => name,
+                _ => &role.name,
+            })
+            .colour(if let Some(colour) = new_colour {
+                colour.into_role_colour().0 as u64
+            } else {
+                role.colour.0 as u64
+            })
+    })?;
+
+    drop(role);
+
+    if let Some(name) = new_name {
+        diesel::update(&colour)
+            .set(c::name.eq(name))
+            .get_result::<Colour>(connection)
+            .map_err(|_| CommandError("Error saving colour to database!".to_string()))
+    } else {
+        Ok(colour)
+    }
 }

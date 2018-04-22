@@ -1,10 +1,14 @@
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
+use serenity::framework::standard::CommandError;
 use serenity::model::channel::{Message, Reaction};
 use serenity::model::id::{ChannelId, MessageId, UserId};
 
 use futures::sync::mpsc::{channel, Receiver};
+use futures::{Future, Stream};
+use futures_timer::{FutureExt, StreamExt};
 
 use parallel_event_emitter::{ListenerId, ParallelEventEmitter};
 
@@ -105,12 +109,13 @@ struct InnerCustomCollector {
     count: usize,
 }
 
+#[derive(Clone)]
 pub struct CustomCollector {
     inner: Arc<Mutex<InnerCustomCollector>>,
 }
 
 macro_rules! get_inner {
-    ($inn: expr) => {{
+    ($inn:expr) => {{
         $inn.lock().expect("Error locking inner in get_inner!")
     }};
 }
@@ -184,14 +189,14 @@ impl CustomCollector {
 
                 let inner = self_arc.inner.clone();
                 let mut inner = inner
-                    .lock()
+                    .try_lock()
                     .expect("Error locking inner in CustomCollector::start_collecting");
 
                 inner.count += 1;
 
                 let sender = sender.clone();
                 let mut sender = sender
-                    .lock()
+                    .try_lock()
                     .expect("Error locking owned sender in CustomCollector::start_collecting");
 
                 let value = value
@@ -218,6 +223,7 @@ impl CustomCollector {
                     let inner = self_arc.inner.clone();
 
                     thread::spawn(move || {
+                        println!("trying to remove");
                         let inner = inner.lock().unwrap();
 
                         let mut collector = inner.collector.lock().expect(
@@ -231,7 +237,11 @@ impl CustomCollector {
                         }
                     });
                 } else if correct_channel && correct_user && correct_message {
-                    sender.try_send(T::from(value)).expect("Error sending message to owned channel in ParallelEventEmitter::add_listener_value")
+                    match sender.try_send(T::from(value)) {
+                        Ok(_) => (),
+                        // channel probably timed out and got dropped.
+                        Err(_) => (),
+                    }
                 }
 
                 Ok(())
@@ -241,5 +251,27 @@ impl CustomCollector {
         inner.listener_id = Some(id);
 
         receiver
+    }
+
+    pub fn get_message_reply(self, msg: &Message) -> JoinHandle<Option<Message>> {
+        let msg = msg.clone();
+        thread::spawn(move || {
+            self.set_channel(msg.channel_id.clone())
+                .set_limit(1)
+                .set_author(msg.author.id.clone());
+
+            let result = self.start_collecting::<Message>()
+                .take(1)
+                .map_err(|_| CommandError(format!("Error getting next message.")))
+                .timeout(Duration::from_secs(15))
+                .collect()
+                .wait()
+                .map(|val| val.first().map(Message::clone));
+
+            return match result {
+                Ok(reply @ Some(_)) => reply,
+                _ => None,
+            };
+        })
     }
 }

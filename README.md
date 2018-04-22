@@ -18,7 +18,7 @@
 - [x] Can store a colour role on a database.
 - [x] Can determine what guilds have what roles.
 - [x] Can quickly generate new roles.
-- [ ] Can edit a colour role and update the discord role. (*should be done interactively.*)
+- [x] Can edit a colour role and update the discord role. ~~(*should be done interactively.*)~~
 
 ## QOL
 
@@ -27,5 +27,5 @@
 
 ### Display
 
-- [ ] Can create colour diagrams and send them into discord.
+- [x] Can create colour diagrams and send them into discord.
 - [ ] Can display messages in a pretty embed format.

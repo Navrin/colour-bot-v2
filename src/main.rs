@@ -1,13 +1,17 @@
 //! # Colour Bot V2.
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
+#![feature(catch_expr)]
 
 extern crate bigdecimal;
 extern crate cairo;
 extern crate futures;
 extern crate parallel_event_emitter;
 #[macro_use]
+extern crate prettytable;
+#[macro_use]
 extern crate diesel;
+extern crate edit_distance;
 extern crate failure;
 extern crate num_traits;
 extern crate parking_lot;
@@ -15,6 +19,8 @@ extern crate png;
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_diesel;
+#[macro_use]
+extern crate indoc;
 extern crate read_color;
 extern crate resvg;
 extern crate serde;
@@ -25,6 +31,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
 extern crate futures_cpupool;
+extern crate futures_timer;
 extern crate serenity;
 extern crate svg;
 extern crate toml;
@@ -34,33 +41,35 @@ extern crate typemap;
 #[macro_use]
 mod macros;
 
-mod cleaner;
-mod emotes;
-mod colours;
-mod config;
-mod commands;
 mod actions;
+mod cleaner;
 mod collector;
+mod colours;
+mod commands;
+mod config;
+mod constants;
 mod db;
+mod dropdelete;
+mod emotes;
 mod utils;
 
-use utils::Contextable;
 use cleaner::Cleaner;
 use collector::{Collector, CollectorItem, CollectorValue};
+use utils::Contextable;
 
 use std::thread;
 use std::time::Duration;
 
-use serenity::Client;
 use serenity::client::EventHandler;
-use serenity::framework::StandardFramework;
-use serenity::framework::standard::Args;
 use serenity::framework::standard::help_commands::with_embeds;
+use serenity::framework::standard::Args;
 use serenity::framework::standard::{CommandError, DispatchError};
+use serenity::framework::StandardFramework;
 use serenity::model::channel::{Channel, Message, Reaction};
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::prelude::Context;
+use serenity::Client;
 
 use futures::prelude::*;
 
@@ -114,6 +123,7 @@ impl EventHandler for Handler {
             return;
         }
         thread::spawn(move || {
+            println!("about to lock ");
             let mut coll = COLLECTOR.0.lock().unwrap();
 
             let computation = coll.emit_value(
@@ -123,6 +133,7 @@ impl EventHandler for Handler {
             computation
                 .wait()
                 .expect("Error emitting message to Collector");
+            println!("done lock");
         });
 
         let connection = utils::get_connection_or_panic(&ctx);
@@ -171,6 +182,7 @@ impl EventHandler for Handler {
 
                 // cleaner procedure, will execute 6 seconds after the message event ends.
                 // ?HACKY? relies on the .before method of the framework to be called before this does
+                //       ? will .before be called sync? basically a library implmentation detail, should look into it.
                 // due to having no access to commands that are invoked with the right prefix but have no way
                 // to check if they're legit commands or not.
                 // Advantages of this sweep approach is that bot messages and other anomalies in the channels will be purged.
@@ -243,7 +255,9 @@ fn create_framework() -> StandardFramework {
                 .command("add", commands::roles::add_colour)
                 .command("remove", commands::roles::remove_colour)
                 .command("generate", commands::roles::generate_colour)
+                .command("edit", commands::roles::edit_colour)
                 .command("list", commands::lists::list_colours)
+                .command("cycle", commands::roles::cycle_colours)
         })
         .group("channel", |group| {
             group.command("setchannel", commands::channels::set_channel)

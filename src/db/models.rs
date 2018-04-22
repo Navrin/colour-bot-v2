@@ -1,7 +1,7 @@
 use std::default::Default;
 
-use serde_json::Value;
 use serde_json::Map;
+use serde_json::Value;
 
 use bigdecimal::BigDecimal;
 use db::schema::*;
@@ -37,7 +37,7 @@ impl Guild {
     }
 }
 
-#[derive(Identifiable, Queryable, Associations, Insertable, Debug)]
+#[derive(Identifiable, Queryable, Associations, Insertable, Debug, Clone)]
 #[belongs_to(Guild)]
 #[table_name = "colours"]
 pub struct Colour {

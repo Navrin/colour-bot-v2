@@ -1,12 +1,12 @@
 use serenity::utils::Colour;
 
-use read_color::rgb;
 use colours::names;
+use read_color::rgb;
 
 use std::fmt::{Display, Error as FmtError, Formatter};
 
-use std::str::FromStr;
 use std::error::Error;
+use std::str::FromStr;
 
 use std::f64;
 
@@ -85,6 +85,23 @@ impl<'a> ParsedColour<'a> {
         let colour = self.find_nearest(&names::COLOUR_NAMES)?;
 
         colour.name.map(str::to_string)
+    }
+}
+
+impl<'a> From<Colour> for ParsedColour<'a> {
+    fn from(color: Colour) -> Self {
+        ParsedColour {
+            name: None,
+            r: color.r(),
+            g: color.g(),
+            b: color.b(),
+        }
+    }
+}
+
+impl<'a> Display for ParsedColour<'a> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError> {
+        write!(f, "#{r:X}{g:X}{b:X}", r = self.r, g = self.g, b = self.b)
     }
 }
 
