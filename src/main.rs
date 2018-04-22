@@ -54,7 +54,7 @@ mod emotes;
 mod utils;
 
 use cleaner::Cleaner;
-use collector::{Collector, CollectorItem, CollectorValue};
+// use collector::{Collector, CollectorItem, CollectorValue};
 use utils::Contextable;
 
 use std::thread;
@@ -75,9 +75,9 @@ use futures::prelude::*;
 
 use num_traits::ToPrimitive;
 
-lazy_static! {
-    static ref COLLECTOR: Collector = { Collector::new() };
-}
+// lazy_static! {
+//     static ref COLLECTOR: Collector = { Collector::new() };
+// }
 
 const PREFIX_LIST: [&str; 5] = ["!c", "!colour", "!color", "!colours", "!colors"];
 const HELP_CMD_NAME: &str = "help";
@@ -99,13 +99,13 @@ impl EventHandler for Handler {
             }
         }
 
-        thread::spawn(move || {
-            let mut coll = COLLECTOR.0.lock().unwrap();
+        // thread::spawn(move || {
+        //     let mut coll = COLLECTOR.0.lock().unwrap();
 
-            coll.emit_value(CollectorItem::Reaction, CollectorValue::Reaction(react))
-                .wait()
-                .expect("Error emitting reaction to Collector");
-        });
+        //     coll.emit_value(CollectorItem::Reaction, CollectorValue::Reaction(react))
+        //         .wait()
+        //         .expect("Error emitting reaction to Collector");
+        // });
     }
 
     /// Message handler,
@@ -122,19 +122,19 @@ impl EventHandler for Handler {
         if message.author.bot {
             return;
         }
-        thread::spawn(move || {
-            println!("about to lock ");
-            let mut coll = COLLECTOR.0.lock().unwrap();
+        // thread::spawn(move || {
+        //     println!("about to lock ");
+        //     let mut coll = COLLECTOR.0.lock().unwrap();
 
-            let computation = coll.emit_value(
-                CollectorItem::Message,
-                CollectorValue::Message(emitted_message),
-            );
-            computation
-                .wait()
-                .expect("Error emitting message to Collector");
-            println!("done lock");
-        });
+        //     let computation = coll.emit_value(
+        //         CollectorItem::Message,
+        //         CollectorValue::Message(emitted_message),
+        //     );
+        //     computation
+        //         .wait()
+        //         .expect("Error emitting message to Collector");
+        //     println!("done lock");
+        // });
 
         let connection = utils::get_connection_or_panic(&ctx);
 
@@ -257,7 +257,7 @@ fn create_framework() -> StandardFramework {
                 .command("generate", commands::roles::generate_colour)
                 .command("edit", commands::roles::edit_colour)
                 .command("list", commands::lists::list_colours)
-                .command("cycle", commands::roles::cycle_colours)
+            // .command("cycle", commands::roles::cycle_colours)
         })
         .group("channel", |group| {
             group.command("setchannel", commands::channels::set_channel)
