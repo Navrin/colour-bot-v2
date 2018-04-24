@@ -1,11 +1,11 @@
-use serenity::prelude::Context;
 use diesel::pg::PgConnection;
-use db::DB;
 use r2d2::PooledConnection;
 use r2d2_diesel::ConnectionManager;
+use serenity::prelude::Context;
+use DB;
 
-use serenity::model::prelude::{Guild, Message, Role};
 use serenity::framework::standard::{Args, CommandError};
+use serenity::model::prelude::{Guild, Message, Role};
 use serenity::prelude::RwLock;
 
 use std::sync::Arc;
@@ -13,12 +13,7 @@ use std::sync::Arc;
 pub fn get_connection_or_panic(
     context: &Context,
 ) -> PooledConnection<ConnectionManager<PgConnection>> {
-    let manager = {
-        let data = context.data.lock();
-        data.get::<DB>()
-            .expect("Context manager missing. Fatal Error.")
-            .clone()
-    };
+    let manager = DB.clone();
 
     manager
         .make_connection()

@@ -1,7 +1,8 @@
 //! # Colour Bot V2.
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
-#![feature(catch_expr)]
+#![feature(catch_expr, fs_read_write, plugin, decl_macro)]
+#![plugin(rocket_codegen)]
 
 extern crate bigdecimal;
 extern crate cairo;
@@ -11,16 +12,18 @@ extern crate parallel_event_emitter;
 extern crate prettytable;
 #[macro_use]
 extern crate diesel;
+extern crate crossbeam;
+#[macro_use]
+extern crate rocket;
 extern crate edit_distance;
 extern crate failure;
+extern crate hyper;
 extern crate num_traits;
 extern crate parking_lot;
 extern crate png;
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_diesel;
-#[macro_use]
-extern crate indoc;
 extern crate read_color;
 extern crate resvg;
 extern crate serde;
@@ -31,7 +34,6 @@ extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
 extern crate futures_cpupool;
-extern crate futures_timer;
 extern crate serenity;
 extern crate svg;
 extern crate toml;
@@ -40,18 +42,32 @@ extern crate typemap;
 // needs to resolve before other modules
 #[macro_use]
 mod macros;
+mod config;
+
+lazy_static! {
+    // static ref COLLECTOR: Collector = { Collector::new() };
+
+    pub static ref CONFIG: config::Config = config::get_config_from_file()
+        .expect("Could not find a config file. Either provide a config.toml at the root or set a env key called COLOUR_BOT_CONFIG as a path to a config.");
+
+
+    pub static ref DB: db::DB = {
+        db::DB::new(&CONFIG.database)
+            .expect("Could not create a database connection. Verify if the given database config is valid, and your database is enabled and active.")
+    };
+}
 
 mod actions;
 mod cleaner;
 mod collector;
 mod colours;
 mod commands;
-mod config;
 mod constants;
 mod db;
 mod dropdelete;
 mod emotes;
 mod utils;
+mod webserver;
 
 use cleaner::Cleaner;
 // use collector::{Collector, CollectorItem, CollectorValue};
@@ -71,13 +87,7 @@ use serenity::model::id::ChannelId;
 use serenity::prelude::Context;
 use serenity::Client;
 
-use futures::prelude::*;
-
 use num_traits::ToPrimitive;
-
-// lazy_static! {
-//     static ref COLLECTOR: Collector = { Collector::new() };
-// }
 
 const PREFIX_LIST: [&str; 5] = ["!c", "!colour", "!color", "!colours", "!colors"];
 const HELP_CMD_NAME: &str = "help";
@@ -364,23 +374,24 @@ fn create_framework() -> StandardFramework {
 }
 
 fn main() {
-    let config = config::get_config_from_file()
-        .expect("Could not find a config file. Either provide a config.toml at the root or set a env key called COLOUR_BOT_CONFIG as a path to a config.");
-
-    let mut client = Client::new(&config.discord.token, Handler)
+    let mut client = Client::new(&CONFIG.discord.token, Handler)
         .expect("Could not initiate client. Check if your token is a *VALID* bot token.");
 
-    let pool = db::DB::new(&config.database)
-        .expect("Could not create a database connection. Verify if the given database config is valid, and your database is enabled and active.");
-
-    {
+    let pool = {
         let mut data = client.data.lock();
-        data.insert::<db::DB>(pool);
         data.insert::<Cleaner>(Cleaner::new());
-    }
+    };
 
     client.with_framework(create_framework());
 
-    client.start()
-        .expect("Could not start the client! Check network connection, make sure the discord servers are up.");
+    crossbeam::scope(|scope| {
+        scope.spawn(move || {
+            webserver::server::create_server();
+        });
+
+        scope.spawn(move || {
+            client.start()
+            .expect("Could not start the client! Check network connection, make sure the discord servers are up.");
+        });
+    });
 }

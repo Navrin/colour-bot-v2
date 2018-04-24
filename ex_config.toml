@@ -8,3 +8,8 @@ password = "password"
 address = "127.0.0.1"
 port = "5432"
 database = "colours"
+
+[server]
+static_path = "./path/to/frontend"
+env = "development" # or "production"
+logging = true

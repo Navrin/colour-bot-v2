@@ -1,14 +1,16 @@
-use std::fs::File;
 use std::env::var;
+use std::fs::File;
 use std::io::prelude::*;
 
-use toml;
 use failure::Error;
+use rocket;
+use toml;
 
 #[derive(Deserialize)]
 pub struct Config {
     pub database: DatabaseConfig,
     pub discord: DiscordConfig,
+    pub server: ServerConfig,
 }
 
 #[derive(Deserialize)]
@@ -26,6 +28,14 @@ pub struct DatabaseConfig {
     pub address: String,
     pub port: String,
     pub database: String,
+}
+
+#[derive(Deserialize)]
+pub struct ServerConfig {
+    pub static_path: String,
+    pub env: String,
+    pub port: Option<u16>,
+    pub logging: Option<bool>,
 }
 
 pub fn get_config_from_file() -> Result<Config, Error> {

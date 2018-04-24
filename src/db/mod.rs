@@ -1,15 +1,10 @@
-use typemap::Key;
-use r2d2::{self, Error as R2D2Error, PooledConnection};
-use r2d2_diesel::ConnectionManager;
 use config::DatabaseConfig;
 use diesel::PgConnection;
+use r2d2::{self, Error as R2D2Error, PooledConnection};
+use r2d2_diesel::ConnectionManager;
 
 #[derive(Clone)]
 pub struct DB(r2d2::Pool<ConnectionManager<PgConnection>>);
-
-impl Key for DB {
-    type Value = DB;
-}
 
 impl DB {
     pub fn new(config: &DatabaseConfig) -> Result<DB, R2D2Error> {
