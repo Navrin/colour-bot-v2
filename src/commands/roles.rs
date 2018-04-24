@@ -23,7 +23,6 @@ use prettytable::Table;
 pub fn get_colour(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["getc", "getcolour", "getcolor", "colour", "color"])
         .desc("Finds a colour role from a name and assigns it to you.")
-        .guild_only(true)
         .help_available(true)
         .usage("colour")
         .example("red")
@@ -82,7 +81,6 @@ pub fn add_colour(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["addc", "addcolour", "addcolor"])
         .desc("Adds an existing role to the colour list.")
         .required_permissions(Permissions::MANAGE_ROLES)
-        .guild_only(true)
         .help_available(true)
         .usage("<@role/role name> <colour name>")
         .example("@Redbois red")
@@ -133,7 +131,6 @@ pub fn add_colour_exec(
 pub fn remove_colour(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["removec", "rm", "rmcolour", "rmcolor"])
         .desc("Removes a colour and its role from the list. Optionally the discord role can be preserved")
-        .guild_only(true)
         .required_permissions(Permissions::MANAGE_ROLES)
         .help_available(true)
         .usage("<colour> [leave the discord role and delete only the database one]")
@@ -192,7 +189,6 @@ pub fn remove_colour_exec(
 pub fn generate_colour(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["generate", "quick", "make"])
         .desc("Generates a new colour without needing a role.")
-        .guild_only(true)
         .help_available(true)
         .required_permissions(Permissions::MANAGE_ROLES)
         .example("#ff0000 green")
@@ -265,7 +261,6 @@ pub fn generate_colour_exec(
 pub fn edit_colour(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["edit_colour", "edit_color", "change_color", "change_colour"])
         .desc("Edit a colour on the server.")
-        .guild_only(true)
         .help_available(true)
         .required_permissions(Permissions::MANAGE_ROLES)
         .usage("edit <colour name (quoted if spaces)> <info | name = foo | colour = #ff0000 | role name = bar>")

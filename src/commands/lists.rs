@@ -3,17 +3,16 @@ use utils;
 
 use std::fs;
 
+use serenity::framework::standard::Args;
 use serenity::framework::standard::{CommandError, CreateCommand};
 use serenity::model::prelude::Message;
-use serenity::framework::standard::Args;
-use serenity::Error as SerenityError;
 use serenity::prelude::Context;
+use serenity::Error as SerenityError;
 
 /// Sends the colour list into the user's DMs.
 pub fn list_colours(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["listc", "showall", "viewall"])
         .desc("Displays a list of all the colours in an image format.")
-        .guild_only(true)
         .help_available(true)
         .usage("")
         .example("")
