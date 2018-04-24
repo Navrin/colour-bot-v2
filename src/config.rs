@@ -19,6 +19,10 @@ pub struct DiscordConfig {
     pub token: String,
     /// This sets the game that will display under the bot in the members list.
     pub playing_message: Option<String>,
+
+    pub id: String,
+    pub secret: String,
+    pub callback_uri: String,
 }
 
 #[derive(Deserialize)]
@@ -36,6 +40,8 @@ pub struct ServerConfig {
     pub env: String,
     pub port: Option<u16>,
     pub logging: Option<bool>,
+    pub certs: String,
+    pub key: String,
 }
 
 pub fn get_config_from_file() -> Result<Config, Error> {

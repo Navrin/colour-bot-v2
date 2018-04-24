@@ -1,23 +1,31 @@
 //! # Colour Bot V2.
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
-#![feature(catch_expr, fs_read_write, plugin, decl_macro)]
+#![feature(catch_expr, plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
 extern crate bigdecimal;
 extern crate cairo;
 extern crate futures;
 extern crate parallel_event_emitter;
+extern crate percent_encoding;
 #[macro_use]
 extern crate prettytable;
 #[macro_use]
 extern crate diesel;
 extern crate crossbeam;
+extern crate reqwest;
 #[macro_use]
 extern crate rocket;
-extern crate edit_distance;
-extern crate failure;
+#[macro_use]
 extern crate hyper;
+#[macro_use]
+extern crate rocket_codegen;
+extern crate edit_distance;
+#[macro_use]
+extern crate juniper;
+extern crate failure;
+extern crate juniper_rocket;
 extern crate num_traits;
 extern crate parking_lot;
 extern crate png;

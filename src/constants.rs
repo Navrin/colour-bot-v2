@@ -9,3 +9,7 @@ pub mod commands {
             "The internal role name that discord uses. \n(editing this will also change the name)";
     }
 }
+
+pub mod webserver {
+    pub const DISCORD_API_URL: &str = "https://discordapp.com/api/v6";
+}

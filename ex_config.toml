@@ -1,6 +1,11 @@
 [discord]
 token = "XXXXXXXXXXXXXXXXXXX" # required. Discord bot token.
+id = "XXXXXXXXXXX" # Client ID for your app.
+secret = "XXXXXXXXX" # Client secret for your app.
+callback_uri = "http://localhost:7777/callback" # This needs to be first defined in your discord's app config
+
 playing_message = "with a rainbow" # Sets the "Playing" message displayed under the bot.
+
 
 [database]
 username = "admin"
@@ -13,3 +18,5 @@ database = "colours"
 static_path = "./path/to/frontend"
 env = "development" # or "production"
 logging = true
+certs = "certs/cert.pem"
+key = "certs/key.pem"
