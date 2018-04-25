@@ -1,17 +1,16 @@
 use actions;
 use utils;
 
-use serenity::framework::standard::{CommandError, CreateCommand};
-use serenity::model::prelude::{Channel, Message};
 use serenity::framework::standard::Args;
+use serenity::framework::standard::{CommandError, CreateCommand};
 use serenity::model::permissions::Permissions;
+use serenity::model::prelude::{Channel, Message};
 use serenity::prelude::Context;
 
 /// Sets the tracked discord channel, where colour requests will be made and colour images will be posted.
 pub fn set_channel(cmd: CreateCommand) -> CreateCommand {
     cmd.batch_known_as(&["chan", "channel", "setchan"])
         .desc("Sets the tracked channel for the guild.")
-        .guild_only(true)
         .help_available(true)
         .usage("<#channel mention>")
         .example("#colour_request")
