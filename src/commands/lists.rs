@@ -25,7 +25,7 @@ pub fn list_colours_exec(
     msg: &Message,
     _args: Args,
 ) -> Result<(), CommandError> {
-    let connection = utils::get_connection_or_panic(ctx);
+    let connection = utils::get_connection_or_panic();
 
     let guild = utils::get_guild_result(msg)?;
     let guild = guild.read();

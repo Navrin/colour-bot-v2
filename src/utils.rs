@@ -10,9 +10,7 @@ use serenity::prelude::RwLock;
 
 use std::sync::Arc;
 
-pub fn get_connection_or_panic(
-    context: &Context,
-) -> PooledConnection<ConnectionManager<PgConnection>> {
+pub fn get_connection_or_panic() -> PooledConnection<ConnectionManager<PgConnection>> {
     let manager = DB.clone();
 
     manager

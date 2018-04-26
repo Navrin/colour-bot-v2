@@ -10,7 +10,7 @@ use rocket::State;
 
 use juniper_rocket;
 
-use percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
+use failure::Error;
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -40,16 +40,17 @@ fn graphql_post(
 }
 
 #[get("/login")]
-fn login() -> Redirect {
-    let redirect = utf8_percent_encode(&CONFIG.discord.callback_uri, DEFAULT_ENCODE_SET);
-
-    let oauth_uri = format!(
-        "https://discordapp.com/api/oauth2/authorize?client_id={client_id}&redirect_uri={redirect}&response_type=code&scope=guilds%20identify", 
-        client_id=CONFIG.discord.id, 
-        redirect=redirect
+fn login() -> Result<Redirect, Error> {
+    let oauth_uri = api_path!("/oauth2/authorize"; 
+        &[
+            ("client_id", CONFIG.discord.id.clone()), 
+            ("redirect_uri", CONFIG.discord.callback_uri.clone()), 
+            ("response_type", "code".into()), 
+            ("scope", "guilds identify".into())
+        ]
     );
 
-    Redirect::to(&oauth_uri)
+    Ok(Redirect::to(&oauth_uri))
 }
 
 #[get("/favicon.ico")]

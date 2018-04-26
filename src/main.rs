@@ -7,8 +7,11 @@
 extern crate bigdecimal;
 extern crate cairo;
 extern crate futures;
+extern crate hyper_native_tls;
 extern crate parallel_event_emitter;
 extern crate percent_encoding;
+#[macro_use]
+extern crate serde_urlencoded;
 #[macro_use]
 extern crate prettytable;
 #[macro_use]
@@ -16,11 +19,11 @@ extern crate diesel;
 extern crate crossbeam;
 extern crate reqwest;
 #[macro_use]
+extern crate derive_more;
+#[macro_use]
 extern crate rocket;
 #[macro_use]
 extern crate hyper;
-#[macro_use]
-extern crate rocket_codegen;
 extern crate edit_distance;
 #[macro_use]
 extern crate juniper;
@@ -51,6 +54,7 @@ extern crate typemap;
 #[macro_use]
 mod macros;
 mod config;
+mod constants;
 
 lazy_static! {
     // static ref COLLECTOR: Collector = { Collector::new() };
@@ -70,7 +74,6 @@ mod cleaner;
 mod collector;
 mod colours;
 mod commands;
-mod constants;
 mod db;
 mod dropdelete;
 mod emotes;
@@ -154,7 +157,7 @@ impl EventHandler for Handler {
         //     println!("done lock");
         // });
 
-        let connection = utils::get_connection_or_panic(&ctx);
+        let connection = utils::get_connection_or_panic();
 
         let colour_channel_inner_opt = utils::get_guild_result(&message)
             .ok()

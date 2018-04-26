@@ -1,14 +1,25 @@
 use CONFIG;
 
-use constants;
-use hyper::header::Header;
+use super::requests::HyperResponseExt;
+use actions;
+use bigdecimal::ToPrimitive;
+use hyper::header::Authorization;
 use juniper;
 use juniper::FieldResult;
-use reqwest::{self, header};
-use serde::{de::DeserializeOwned, Deserialize};
-use serde_json::{value::from_value, Value};
+use serenity::model::{guild::GuildInfo,
+                      id::{GuildId, RoleId},
+                      prelude::{Guild, User}};
+use serenity::{cache::Cache, CACHE};
+use utils;
 
-header! { (ContentType, "Content-Type") => [String]}
+#[derive(Debug, Display)]
+struct GenericError(pub String);
+
+use colours::ParsedColour;
+
+use db::models::Colour;
+
+header! { (ContentType, "Content-Type") => [String] }
 
 const API_VERSION: &str = "v0.0.1";
 
@@ -21,58 +32,81 @@ struct TokenResponse {
     scope: String,
 }
 
+#[derive(GraphQLObject, Serialize, Deserialize, Debug)]
+struct ColourReponse {
+    id: String,
+    name: String,
+    colour: String,
+}
+
 pub struct Query;
 pub struct Mutation;
-
-fn parse_oauth_discord_response<'d, T: DeserializeOwned>(value: Value) -> Result<T, String> {
-    let lifetime_v = value.clone();
-    println!("{:#?}", lifetime_v);
-
-    let err_opt = lifetime_v.get("error").map(|err| {
-        err.as_str()
-            .unwrap_or("Error field doesn't seem to be a string, check model")
-    });
-
-    let parse_attempt = from_value::<T>(value);
-
-    match err_opt {
-        Some(v) => Err(v.to_string()),
-        None => parse_attempt.map_err(|err| format!("{}", err)),
-    }
-}
 
 graphql_object!(Query: () |&self| {
     field version() -> &str {
         API_VERSION
     }
 
-    field get_token(code: String) -> FieldResult<TokenResponse> {
-        let mut client = reqwest::Client::new();
+    field token(code: String) -> FieldResult<TokenResponse> {
+        let client = get_client!();
         let header = ContentType("application/x-www-form-urlencoded".into());
 
-        let mut response = client
-            .post(&format!("{}/oauth2/token", constants::webserver::DISCORD_API_URL));
-
-        let mut response = response.basic_auth(CONFIG.discord.id.as_str(), Some(CONFIG.discord.secret.as_str()))
-            .header(header)
-            .header(header::ContentLength(0))
-            .basic_auth(CONFIG.discord.id.clone(), Some(CONFIG.discord.secret.clone()))
-            .query(&[
-                // ("client_id", CONFIG.discord.id.clone()),
-                // ("client_secret", CONFIG.discord.secret.clone()),
+        let response = client.post(&api_path!("/oauth2/token"; &[
+                ("client_id", CONFIG.discord.id.clone()),
+                ("client_secret", CONFIG.discord.secret.clone()),
                 ("grant_type", "authorization_code".to_string()),
+                ("redirect_uri", CONFIG.discord.callback_uri.clone()),
                 ("code", code)
-            ]);
+            ]))
+            .header(header)
+            .send()?
+            .oauth_json::<TokenResponse>()?;
 
-        println!("{:#?}", response);
+        Ok(response)
+    }
 
-        let mut response = response.send()?;
+    field colours(guild: String, token: String) -> FieldResult<Vec<ColourReponse>> {
+        let guild_id = GuildId(guild.parse::<u64>()?);
+        let guilds = {
+            let client = get_client!();
+            client.get(api_path!("/users/@me/guilds"))
+                .header(make_auth!(token))
+                .send()?
+                .json::<Vec<GuildInfo>>()?
+        };
 
-        println!("{:#?}", response.text());
-        
-        let response = response.json::<Value>()?;
+        let guild_ids = guilds.iter().map(|g| g.id).collect::<Vec<_>>();
 
-        let data = parse_oauth_discord_response::<TokenResponse>(response)?;
+        if !guild_ids.contains(&guild_id) {
+            Err(GenericError("You can't get colours for a guild you don't belong in.".into()))?
+        }
+
+        let cache = CACHE.read();
+
+        let guild = cache.guilds.get(&guild_id)
+            .ok_or(GenericError("Requested guild does not exist within the bot cache.".into()))?
+            .read();
+
+
+        let connection = utils::get_connection_or_panic();
+        let guild_record = actions::guilds::convert_guild_to_record(&guild_id, &connection)
+            .ok_or(GenericError("The requested guild exists in the cache, but not in the database. Has a colour been added to the bot?".into()))?;
+
+        let colours = actions::colours::find_all(&guild_record, &connection).ok_or(GenericError("Error while trying to find the colour list".into()))?;
+
+        let data = colours
+            .iter()
+            .map(|colour| {
+                colour.id.to_u64()
+                    .and_then(|id| guild.roles.get(&RoleId(id)))
+                    .map(|role| ColourReponse {
+                        id: role.id.to_string(),
+                        name: colour.name.clone(),
+                        colour: format!("{}", ParsedColour::from(role.colour))
+                    })
+                    .ok_or(GenericError("There was an error converting the colours".into()))
+            })
+            .collect::<Result<Vec<ColourReponse>, GenericError>>()?;
 
         Ok(data)
     }

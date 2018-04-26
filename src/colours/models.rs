@@ -89,12 +89,12 @@ impl<'a> ParsedColour<'a> {
 }
 
 impl<'a> From<Colour> for ParsedColour<'a> {
-    fn from(color: Colour) -> Self {
+    fn from(colour: Colour) -> Self {
         ParsedColour {
             name: None,
-            r: color.r(),
-            g: color.g(),
-            b: color.b(),
+            r: colour.r(),
+            g: colour.g(),
+            b: colour.b(),
         }
     }
 }

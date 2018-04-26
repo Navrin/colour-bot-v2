@@ -31,7 +31,7 @@ pub fn get_colour(cmd: CreateCommand) -> CreateCommand {
 }
 
 pub fn get_colour_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(), CommandError> {
-    let conn = utils::get_connection_or_panic(ctx);
+    let conn = utils::get_connection_or_panic();
     let colour_name = args.multiple::<String>()?.join(" ");
 
     let guild = msg.guild()
@@ -93,7 +93,7 @@ pub fn add_colour_exec(
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
-    let connection = utils::get_connection_or_panic(ctx);
+    let connection = utils::get_connection_or_panic();
 
     let guild = msg.guild()
         .ok_or(CommandError("Could not find guild. This command only works in a guild, if you are a in a PM / Group, please only use commands that do not require any roles".to_string()))?;
@@ -144,7 +144,7 @@ pub fn remove_colour_exec(
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
-    let connection = utils::get_connection_or_panic(&ctx);
+    let connection = utils::get_connection_or_panic();
 
     let guild_res = utils::get_guild_result(&msg)?;
     let guild = guild_res.read();
@@ -202,7 +202,7 @@ pub fn generate_colour_exec(
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
-    let connection = utils::get_connection_or_panic(ctx);
+    let connection = utils::get_connection_or_panic();
 
     let colour = args.single::<ParsedColour>()?;
     let name = args.single_quoted_n::<String>()
@@ -274,7 +274,7 @@ pub fn edit_colour_exec(
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
-    let connection = utils::get_connection_or_panic(ctx);
+    let connection = utils::get_connection_or_panic();
     let colour_name = args.single_quoted::<String>()?;
     let action = args.multiple::<String>()?.join(" ");
 

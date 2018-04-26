@@ -12,4 +12,6 @@ pub mod commands {
 
 pub mod webserver {
     pub const DISCORD_API_URL: &str = "https://discordapp.com/api/v6";
+
+    // can use this in macros like `concat!`
 }

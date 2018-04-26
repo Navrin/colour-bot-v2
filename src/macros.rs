@@ -26,3 +26,10 @@ macro_rules! reply_error_closure {
         }
     }};
 }
+
+#[macro_export]
+macro_rules! discord_api_url {
+    () => {
+        "https://discordapp.com/api/v6"
+    };
+}

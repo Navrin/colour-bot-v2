@@ -24,7 +24,7 @@ pub fn set_channel_exec(
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
-    let connection = utils::get_connection_or_panic(ctx);
+    let connection = utils::get_connection_or_panic();
 
     let channel = args.single::<Channel>()?;
     let channel_id = channel.id();
