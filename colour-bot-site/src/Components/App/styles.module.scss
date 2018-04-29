@@ -1,0 +1,42 @@
+@import '../../variables';
+
+@mixin TopBar {
+    box-shadow: 0 1px rgba(0, 0, 0, 0.2);
+    z-index: 99;
+}
+
+#App {
+    background: $darkBase;
+    display: grid;
+    grid-template: 5fr 95fr / 64px 2fr 8fr;
+
+    min-height: 100vh;
+    width: 100vw;
+
+    #TopBarGuild {
+        @include TopBar;
+        grid-column: 2;
+    }
+
+    #TopBarAction {
+        @include TopBar;
+        grid-column: 3;
+    }
+
+    #Guildbar {
+        background: $darkThird;
+        grid-column: 1;
+        grid-row: 1 / span 2;
+    }
+
+    #Sidebar {
+        grid-column: 2;
+        grid-row: 2;
+        background: $darkSecond;
+    }
+
+    #Main {
+        grid-row: 2;
+        grid-column: 3;
+    }
+}

@@ -1,0 +1,37 @@
+{
+    "name": "colour-bot-site",
+    "version": "0.1.0",
+    "private": true,
+    "dependencies": {
+        "node-sass": "^4.9.0",
+        "react": "^16.3.2",
+        "react-dom": "^16.3.2",
+        "react-scripts-ts": "2.15.1",
+        "sass-loader": "^7.0.1",
+        "typed-css-modules-loader": "^0.0.12"
+    },
+    "scripts": {
+        "precommit": "lint-staged",
+        "start": "react-app-rewired start",
+        "build": "react-app-rewired build",
+        "test": "react-scripts-ts test --env=jsdom",
+        "eject": "react-scripts-ts eject"
+    },
+    "devDependencies": {
+        "@types/jest": "^22.2.3",
+        "@types/node": "^9.6.6",
+        "@types/react": "^16.3.12",
+        "@types/react-dom": "^16.0.5",
+        "react-app-rewire-css-modules": "codebandits/react-app-rewire-css-modules",
+        "react-app-rewire-typescript": "^2.0.2",
+        "react-app-rewired": "^1.5.2",
+        "react-scripts": "^1.1.4",
+        "typescript": "^2.8.3"
+    },
+    "lint-staged": {
+        "src/**/*.{ts,tsx,json,scss}": [
+            "prettier --single-quote --write",
+            "git add"
+        ]
+    }
+}
