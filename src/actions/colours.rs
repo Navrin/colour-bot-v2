@@ -1,5 +1,11 @@
 use actions::guilds;
 
+use constants::commands::MAX_STRING_COMPARE_DELTA;
+
+use edit_distance::edit_distance;
+
+use std::usize;
+
 use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -32,10 +38,36 @@ use colours::images::ColourListBuilder;
 
 /// Searches the db for a colour from a name param for a guild.
 pub fn find_from_name(name: &str, guild: &Guild, connection: &PgConnection) -> Option<Colour> {
-    Colour::belonging_to(guild)
-        .filter(c::name.ilike(format!("%{}%", name)))
-        .get_result::<Colour>(connection)
-        .ok()
+    // Colour::belonging_to(guild)
+    //     .filter(c::name.ilike(format!("%{}%", name)))
+    //     .get_result::<Colour>(connection)
+    //     .ok()
+    let name = name.trim();
+    let list = find_all(guild, connection)?;
+
+    get_nearest_colour_for_name(name, &list)
+}
+
+pub fn get_nearest_colour_for_name(name: &str, colours: &Vec<Colour>) -> Option<Colour> {
+    let compare_name = |other| edit_distance(&name, other);
+
+    let (ending_distance, closest_colour) = colours.iter().fold(
+        (usize::MAX, colours.get(0)?),
+        |(distance, last), colour| {
+            let new_distance = compare_name(&colour.name);
+            if distance > new_distance {
+                (new_distance, colour)
+            } else {
+                (distance, last)
+            }
+        },
+    );
+
+    if ending_distance > MAX_STRING_COMPARE_DELTA {
+        None
+    } else {
+        Some(closest_colour.clone())
+    }
 }
 
 /// Gets all the colours related to the guild.

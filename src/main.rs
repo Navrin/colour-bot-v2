@@ -44,6 +44,7 @@ extern crate crossbeam_channel;
 extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
+extern crate chashmap;
 extern crate futures_cpupool;
 extern crate serenity;
 extern crate svg;
@@ -56,6 +57,8 @@ mod macros;
 mod config;
 mod constants;
 
+use serenity::model::id::MessageId;
+
 lazy_static! {
     // static ref COLLECTOR: Collector = { Collector::new() };
 
@@ -67,6 +70,8 @@ lazy_static! {
         db::DB::new(&CONFIG.database)
             .expect("Could not create a database connection. Verify if the given database config is valid, and your database is enabled and active.")
     };
+
+    pub static ref CLEANER: chashmap::CHashMap<MessageId, ()> = chashmap::CHashMap::new();
 }
 
 mod actions;
@@ -209,40 +214,42 @@ impl EventHandler for Handler {
                 // Advantages of this sweep approach is that bot messages and other anomalies in the channels will be purged.
                 thread::spawn(move || {
                     thread::sleep(Duration::from_secs(6));
-                    let _ = ctx.with_item::<Cleaner, serenity::Error, _>(
-                        |cleaner: &mut Cleaner| {
-                            let colour_channel = ChannelId(channel_id_inner);
-                            // collect a few messages and verify if they're commands or not.
-                            // otherwise they're just loiting the channel and will be PURGED
-                            let messages = colour_channel.messages(|m| m.limit(5))?;
-                            let self_id =
-                                serenity::utils::with_cache(|cache| cache.user.id.clone());
+                    let colour_channel = ChannelId(channel_id_inner);
+                    // collect a few messages and verify if they're commands or not.
+                    // otherwise they're just loiting the channel and will be PURGED
+                    let messages =
+                        colour_channel.messages(|m: serenity::builder::GetMessages| m.limit(5));
 
-                            messages
-                                .iter()
-                                .filter(|msg| {
-                                    // dont purge if
-                                    // A) already in the hashset of (good) messages
-                                    // B) from (self)
+                    let messages = match messages {
+                        Ok(v) => v,
+                        Err(e) => return Err(e),
+                    };
 
-                                    // TODO: There's totally a better way to do this, but my brain is having a blank and I just did this
-                                    // fix it later I guess
+                    let self_id = serenity::utils::with_cache(|cache| cache.user.id.clone());
 
-                                    if msg.author.id == self_id {
-                                        false
-                                    } else if !cleaner.contains(&msg.id) {
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                })
-                                .for_each(|msg| {
-                                    let _ = msg.delete();
-                                });
+                    messages
+                        .iter()
+                        .filter(|msg| {
+                            // dont purge if
+                            // A) already in the hashset of (good) messages
+                            // B) from (self)
 
-                            Ok(())
-                        },
-                    );
+                            // TODO: There's totally a better way to do this, but my brain is having a blank and I just did this
+                            // fix it later I guess
+
+                            if msg.author.id == self_id {
+                                false
+                            } else if !CLEANER.contains_key(&msg.id) {
+                                true
+                            } else {
+                                false
+                            }
+                        })
+                        .for_each(|msg| {
+                            let _ = msg.delete();
+                        });
+
+                    Ok(())
                 });
             }
             _ => {}
@@ -312,19 +319,18 @@ fn create_framework() -> StandardFramework {
             } else {
                 // this will prevent the message from being sweeped by the bot.
                 // not that it should be in the channel after the timer...
-                let _ = ctx.with_item::<Cleaner, (), _>(|cleaner| {
-                    let _ = cleaner.insert(msg.id);
-                    Ok(())
-                });
+
+                {
+                    CLEANER.insert(msg.id, ());
+                }
                 true
             }
         })
         .after(|ctx, msg, cmd_name, res| {
             // we're done with this message, sweep it.
-            let _ = ctx.with_item::<Cleaner, (), _>(|cleaner| {
-                let _ = cleaner.remove(&msg.id);
-                Ok(())
-            });
+            {
+                CLEANER.remove(&msg.id);
+            }
 
             let _ = res.map(|_| {
                 let result = msg.react(emotes::GREEN_TICK);
@@ -396,9 +402,9 @@ fn main() {
     client.with_framework(create_framework());
 
     crossbeam::scope(|scope| {
-        scope.spawn(move || {
-            webserver::server::create_server();
-        });
+        // scope.spawn(move || {
+        //     webserver::server::create_server();
+        // });
 
         scope.spawn(move || {
             client.start()

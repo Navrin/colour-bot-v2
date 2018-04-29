@@ -296,29 +296,10 @@ pub fn edit_colour_exec(
     ))?;
 
     // no currying ;(
-    let compare_name = |other| edit_distance(&colour_name, other);
-
-    let first_colour = colour_list.first().ok_or(CommandError(
-        "The colour list is empty! Try making a colour first".to_string(),
-    ))?;
-
-    let (ending_distance, closest_colour) = colour_list.iter().fold(
-        (usize::MAX, first_colour),
-        |(distance, last), colour| {
-            let new_distance = compare_name(&colour.name);
-            if distance > new_distance {
-                (new_distance, colour)
-            } else {
-                (distance, last)
-            }
-        },
-    );
-
-    let closest_colour = closest_colour.clone();
-
-    if ending_distance > MAX_STRING_COMPARE_DELTA {
-        return Err(CommandError(format!("No colour name close enough to {} could be found. Check if the colour exists and that you've spelt it correctly.", colour_name)));
-    }
+    let closest_colour = actions::colours::find_from_name(&colour_name, &guild_record, &connection)
+        .ok_or_else(|| {
+            CommandError(format!("No colour name close enough to {} could be found. Check if the colour exists and that you've spelt it correctly.", &colour_name))
+        })?;
 
     // the distance represents how far away the compared string is to the original one.
     // lower values == similar, higher values == not as similar
