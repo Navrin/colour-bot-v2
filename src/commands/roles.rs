@@ -205,9 +205,12 @@ pub fn generate_colour_exec(
     let connection = utils::get_connection_or_panic();
 
     let colour = args.single::<ParsedColour>()?;
-    let name = args.single_quoted_n::<String>()
+    let name = args.iter::<String>()
+        .collect::<Result<Vec<String>, _>>()
         .map_err(|_| CommandError("Error parsing colour name!".to_string()))
         .and_then(|name| {
+            let name = name.join(" ");
+
             if name.len() <= 1 {
                 colour
                     .find_name()

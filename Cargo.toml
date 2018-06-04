@@ -71,5 +71,6 @@ features = ["tls"]
 version = "0.3.8"
 
 [dependencies.serenity]
-branch = "v0.5.0"
-git = "https://github.com/zeyla/serenity"
+version = "0.5.0"
+# branch = "v0.5.0"
+# git = "https://github.com/zeyla/serenity"

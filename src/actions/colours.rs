@@ -202,7 +202,10 @@ pub fn assign_colour_to_user(
 
     let old_roles = get_managed_roles_from_user(&mut user_member, &id, &conn)?;
 
-    user_member.remove_roles(old_roles.as_slice())?;
+    if old_roles.len() > 0 {
+        user_member.remove_roles(old_roles.as_slice())?;
+    }
+    
     assign_role_to_user(&mut user_member, &colour_role)
 }
 

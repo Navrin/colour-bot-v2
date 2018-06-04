@@ -1,7 +1,7 @@
 //! # Colour Bot V2.
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
-#![feature(catch_expr, plugin, decl_macro)]
+#![feature(catch_expr, plugin, decl_macro, never_type)]
 #![plugin(rocket_codegen)]
 
 extern crate bigdecimal;

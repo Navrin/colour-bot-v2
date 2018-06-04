@@ -6,3 +6,4 @@ config.toml
 *.png
 *.svg
 certs
+rls
