@@ -205,7 +205,7 @@ pub fn assign_colour_to_user(
     if old_roles.len() > 0 {
         user_member.remove_roles(old_roles.as_slice())?;
     }
-    
+
     assign_role_to_user(&mut user_member, &colour_role)
 }
 

@@ -1,13 +1,14 @@
-use serenity::utils::Colour;
-
 use colours::names;
 use read_color::rgb;
-
-use std::fmt::{Display, Error as FmtError, Formatter};
+use serenity::utils::Colour;
+use std::cmp::Ordering;
 
 use std::error::Error;
+use std::fmt::{Display, Error as FmtError, Formatter};
+use std::ops::Deref;
 use std::str::FromStr;
 
+use hsl::HSL;
 use std::f64;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,6 +36,63 @@ impl Error for ColourParseError {
     }
 }
 
+/// HSL colour represntations.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HSLColour<'a> {
+    pub h: f64,
+    pub s: f64,
+    pub l: f64,
+    pub cmp: HSLCmpType,
+    pub name: Option<&'a str>,
+    hsl_struct: HSL,
+}
+
+impl<'a> HSLColour<'a> {
+    pub fn to_parsed(&self) -> ParsedColour<'a> {
+        let (r, g, b) = self.hsl_struct.to_rgb();
+
+        ParsedColour {
+            r,
+            g,
+            b,
+            name: self.name,
+        }
+    }
+}
+
+impl<'a> Eq for HSLColour<'a> {}
+
+impl<'a> PartialOrd for HSLColour<'a> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl<'a> Ord for HSLColour<'a> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.cmp {
+            HSLCmpType::Hue => self.h.partial_cmp(&other.h).unwrap_or(Ordering::Less),
+        }
+    }
+}
+
+impl<'a, 'b> From<&'b ParsedColour<'a>> for HSLColour<'a> {
+    fn from(parsed: &ParsedColour<'a>) -> Self {
+        parsed.to_hsl()
+    }
+}
+
+// impl<'a> From<HSLColour<'a>> for ParsedColour<'a> {
+//     fn from(hsl: HSLColour) -> Self {
+//         hsl.to_parsed()
+//     }
+// }
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum HSLCmpType {
+    Hue,
+}
+
+/// Parsed colour methods.
 /// Represents colours for this bot, can be converted to the discord version, also has a naming component.
 #[derive(Clone, Debug)]
 pub struct ParsedColour<'a> {
@@ -44,7 +102,37 @@ pub struct ParsedColour<'a> {
     pub g: u8,
 }
 
+#[derive(Clone, PartialEq, Debug)]
+pub enum SortMethod {
+    HSL,
+    Distance,
+}
+
 impl<'a> ParsedColour<'a> {
+    pub fn sort_list<T: Into<Self> + Clone>(colours: Vec<T>, method: SortMethod) -> Vec<Self> {
+        let mut colours: Vec<Self> = colours.iter().cloned().map(T::into).collect();
+
+        match method {
+            SortMethod::HSL => {
+                let mut hsl_list: Vec<HSLColour> = colours.iter().map(HSLColour::from).collect();
+
+                hsl_list.sort_unstable();
+
+                hsl_list.iter().map(|z| z.to_parsed()).collect()
+            }
+
+            SortMethod::Distance => {
+                colours.sort_by(|a, b| {
+                    a.compute_distance(&b)
+                        .partial_cmp(&b.compute_distance(a))
+                        .unwrap_or(Ordering::Less)
+                });
+
+                colours
+            }
+        }
+    }
+
     pub fn into_role_colour(&self) -> Colour {
         Colour::from_rgb(self.r, self.g, self.b)
     }
@@ -85,6 +173,19 @@ impl<'a> ParsedColour<'a> {
         let colour = self.find_nearest(&names::COLOUR_NAMES)?;
 
         colour.name.map(str::to_string)
+    }
+
+    pub fn to_hsl(&self) -> HSLColour<'a> {
+        let hsl = HSL::from_rgb(&[self.r, self.g, self.b]);
+
+        HSLColour {
+            h: hsl.h,
+            s: hsl.s,
+            l: hsl.l,
+            hsl_struct: hsl,
+            name: self.name,
+            cmp: HSLCmpType::Hue,
+        }
     }
 }
 

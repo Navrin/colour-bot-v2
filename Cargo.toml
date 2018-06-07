@@ -2,7 +2,6 @@
 authors = ["Navrin <navman360@gmail.com>"]
 name = "colour-bot-v2"
 version = "0.1.0"
-
 [dependencies]
 bigdecimal = "0.0.11"
 chashmap = "2.2.0"
@@ -15,6 +14,7 @@ failure = "0.1.1"
 futures = "0.1.21"
 futures-cpupool = "0.1.8"
 futures-timer = "0.1.1"
+hsl = "*"
 hyper = "~0.10"
 hyper-native-tls = "0.2.4"
 indoc = "0.2.3"
@@ -45,18 +45,11 @@ features = ["png"]
 version = "0.3.0"
 
 [dependencies.diesel]
-features = [
-    "numeric",
-    "postgres",
-    "serde_json",
-]
+features = ["numeric", "postgres", "serde_json"]
 version = "1.2.0"
 
 [dependencies.parallel-event-emitter]
-features = [
-    "default",
-    "conservative_impl_trait",
-]
+features = ["default", "conservative_impl_trait"]
 version = "0.2.4"
 
 [dependencies.r2d2-diesel]

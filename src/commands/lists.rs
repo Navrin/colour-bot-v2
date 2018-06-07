@@ -62,3 +62,26 @@ pub fn list_colours_exec(
 
     Ok(())
 }
+
+pub fn refresh_list(cmd: CreateCommand) -> CreateCommand {
+    cmd.batch_known_as(&["refresh, regenerate, reload_list"])
+        .desc("Refreshes the colour list in the designated channel.")
+        .help_available(true)
+        .usage("")
+        .example("")
+        .max_args(0)
+        .exec(list_colours_exec)
+}
+
+fn refresh_list_exec(ctx: &mut Context, msg: &Message, _args: Args) -> Result<(), CommandError> {
+    let connection = utils::get_connection_or_panic();
+
+    let guild = utils::get_guild_result(msg)?;
+    let guild = guild.read();
+
+    Ok(actions::guilds::update_channel_message(
+        guild,
+        &connection,
+        true,
+    )?)
+}

@@ -1,12 +1,13 @@
 //! # Colour Bot V2.
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
-#![feature(catch_expr, plugin, decl_macro, never_type)]
+#![feature(catch_expr, plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
 extern crate bigdecimal;
 extern crate cairo;
 extern crate futures;
+extern crate hsl;
 extern crate hyper_native_tls;
 extern crate parallel_event_emitter;
 extern crate percent_encoding;
@@ -288,7 +289,9 @@ fn create_framework() -> StandardFramework {
             // .command("cycle", commands::roles::cycle_colours)
         })
         .group("channel", |group| {
-            group.command("setchannel", commands::channels::set_channel)
+            group
+                .command("setchannel", commands::channels::set_channel)
+                .command("refreshchannel", commands::lists::refresh_list)
         })
         .group("utils", |group| {
             group.command("info", commands::utils::info)
@@ -336,11 +339,15 @@ fn create_framework() -> StandardFramework {
                 let result = msg.react(emotes::GREEN_TICK);
 
                 let _ = result.map_err(|_| {
-                    let _ = msg.channel_id.send_message(|msg| {
+                    let msg = msg.channel_id.send_message(|msg| {
                         msg.content(
                             "Error trying to react to a message. Check permissions for the bot!",
                         )
                     });
+
+                    if let Ok(msg) = msg {
+                        delay_delete!(msg; 10);
+                    }
                 });
             }).map_err(|CommandError(err)| {
                 let _ = msg.react(emotes::RED_CROSS);

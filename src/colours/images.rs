@@ -1,7 +1,8 @@
 use std::fs::File;
-use std::path::PathBuf;
 use std::io::Error as IoError;
+use std::path::PathBuf;
 
+use colours::{models::SortMethod, ParsedColour};
 use serenity::utils::Colour;
 
 use cairo::IoError as CairoIoError;
@@ -10,9 +11,9 @@ use resvg;
 use resvg::Error as ReSvgError;
 use svg;
 
+use svg::node::element::{Group, Rectangle, Text as TextEl};
 use svg::node::Text;
 use svg::Document;
-use svg::node::element::{Group, Rectangle, Text as TextEl};
 
 const DARK_THEME_BACKGROUND: &str = "#36393e";
 
@@ -207,6 +208,30 @@ impl ColourListBuilder {
             .collect::<Vec<ColourSection>>()
     }
 
+    fn sort_colours(&self, colours: Vec<(Name, Colour)>) -> Vec<(Name, Colour)> {
+        // get config for the sort type
+
+        // cheat a little, replace the name in the colour struct with the given name
+
+        let colours_remade: Vec<ParsedColour> = colours
+            .iter()
+            .map(|(name, colour)| ParsedColour {
+                name: Some(&name.0),
+                ..ParsedColour::from(*colour)
+            })
+            .collect();
+
+        ParsedColour::sort_list(colours_remade, SortMethod::HSL)
+            .iter()
+            .map(|colour| {
+                (
+                    Name(colour.name.unwrap().to_string()),
+                    colour.into_role_colour(),
+                )
+            })
+            .collect()
+    }
+
     pub fn create_image<S: Into<String>>(
         &self,
         colours: Vec<(Name, Colour)>,
@@ -215,8 +240,9 @@ impl ColourListBuilder {
         let columns = if self.dual_colour { 2 } else { 1 };
         let height = self.get_height_for_type(colours.len());
         let width = self.get_width_for_type(columns);
+        let sorted_colors = self.sort_colours(colours);
 
-        let colours = self.transform_colours_to_sections(colours);
+        let colours = self.transform_colours_to_sections(sorted_colors);
 
         let doc = svg::Document::new().set("viewBox", (0, 0, width, height));
 
