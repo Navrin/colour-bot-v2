@@ -5,7 +5,6 @@ use std::cmp::Ordering;
 
 use std::error::Error;
 use std::fmt::{Display, Error as FmtError, Formatter};
-use std::ops::Deref;
 use std::str::FromStr;
 
 use hsl::HSL;
@@ -105,12 +104,11 @@ pub struct ParsedColour<'a> {
 #[derive(Clone, PartialEq, Debug)]
 pub enum SortMethod {
     HSL,
-    Distance,
 }
 
 impl<'a> ParsedColour<'a> {
     pub fn sort_list<T: Into<Self> + Clone>(colours: Vec<T>, method: SortMethod) -> Vec<Self> {
-        let mut colours: Vec<Self> = colours.iter().cloned().map(T::into).collect();
+        let colours: Vec<Self> = colours.iter().cloned().map(T::into).collect();
 
         match method {
             SortMethod::HSL => {
@@ -121,15 +119,15 @@ impl<'a> ParsedColour<'a> {
                 hsl_list.iter().map(|z| z.to_parsed()).collect()
             }
 
-            SortMethod::Distance => {
-                colours.sort_by(|a, b| {
-                    a.compute_distance(&b)
-                        .partial_cmp(&b.compute_distance(a))
-                        .unwrap_or(Ordering::Less)
-                });
+            // SortMethod::Distance => {
+            //     colours.sort_by(|a, b| {
+            //         a.compute_distance(&b)
+            //             .partial_cmp(&b.compute_distance(a))
+            //             .unwrap_or(Ordering::Less)
+            //     });
 
-                colours
-            }
+            //     colours
+            // }
         }
     }
 

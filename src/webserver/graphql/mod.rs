@@ -7,29 +7,23 @@ use self::models::{
     common::{TokenResponse, ColourResponse, ColourDeleteResponse, ColourUpdateInput},
 };
 use super::requests::HyperResponseExt;
-use std::thread;
 use actions;
 use std::str::FromStr;
+use juniper;
 use bigdecimal::ToPrimitive;
 use bigdecimal::FromPrimitive;
 use bigdecimal::BigDecimal;
-use hyper::header::Authorization;
-use juniper;
 use juniper::{FieldError, FieldResult};
 use serenity::model::{
-    guild::{GuildInfo,Role},
-    id::{GuildId, RoleId, UserId},
-    prelude::{Guild as SerenityGuild, User},
+    id::{GuildId, RoleId},
 };
-use serenity::{cache::Cache, CACHE};
+use serenity::CACHE;
 use utils;
 
 #[derive(Debug, Display, Clone)]
 pub struct GenericError(pub String);
 
 use colours::ParsedColour;
-
-use db::models::Colour;
 
 const API_VERSION: &str = "v0.0.1";
 
@@ -94,18 +88,6 @@ struct ColourCreateInput {
     pub role_id: Option<String>,
 }
 
-macro_rules! update_channel {
-    ($id:expr) => {
-        let id_copy = $id;
-
-        thread::spawn(move || {
-            let connection = utils::get_connection_or_panic();
-
-            let _ = actions::guilds::update_channel_message(GuildId(id_copy), &connection, false)
-                .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)));
-        });
-    };
-}
 
 graphql_object!(Mutation: Context | &self | {
     field version() -> &str {
@@ -179,7 +161,10 @@ graphql_object!(Mutation: Context | &self | {
 
         let response = ColourResponse::new_from(&colour_record, &parsed_colour);
 
-        update_channel!(guild_id);
+        let self_id = cache.user.id.0;
+
+        actions::guilds::update_channel_message(guild, self_id, &connection, false)
+            .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)))?;
 
         Ok(response)        
     }
@@ -217,7 +202,11 @@ graphql_object!(Mutation: Context | &self | {
             .ok_or(GenericError("There was an issue getting the correct ID for the guild record.".to_string()))?;
 
         let colours = actions::colours::remove_multiple(colour_ids, guild_id_bigdec, &connection)?;
-        update_channel!(guild_id.0);
+
+        let self_id = cache.user.id.0;
+
+        actions::guilds::update_channel_message(guild, self_id, &connection, false)
+                .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)))?;
         
         Ok(
             colours
@@ -275,18 +264,21 @@ graphql_object!(Mutation: Context | &self | {
             new_colour,
             new_name,
             change_role_name: new_data.update_role_name,
-            guild: &guild,
+            guild: &guild.clone(),
         };
 
         let colour = actions::colours::update_colour_and_role(params, &connection)
             .map_err(|e| GenericError(format!("There was an error trying to update the colour due to {:#?}!", e)))?;
         
         let role_id = RoleId(colour.id.to_u64().ok_or(GenericError("Failure converting id into u64".to_string()))?);
-        let role = guild.roles.get(&role_id)
+        let all_roles = guild.roles.clone();
+        let role = all_roles.get(&role_id)
             .ok_or(GenericError("Could not find the role for the given role_id on the colour!".to_string()))?;
 
 
-        update_channel!(guild_id);
+        let self_id = cache.user.id.0;
+        actions::guilds::update_channel_message(guild, self_id, &connection, false)
+                .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)))?;
 
         Ok(ColourResponse {
             name: colour.name,

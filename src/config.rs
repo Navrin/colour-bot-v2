@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::prelude::*;
 
 use failure::Error;
-use rocket;
 use toml;
 
 #[derive(Deserialize)]

@@ -11,6 +11,6 @@ pub mod commands {
 }
 
 pub mod webserver {
-    pub const DISCORD_API_URL: &str = "https://discordapp.com/api/v6";
+    // pub const DISCORD_API_URL: &str = "https://discordapp.com/api/v6";
     // unused, but a reference for what the macro should be.
 }

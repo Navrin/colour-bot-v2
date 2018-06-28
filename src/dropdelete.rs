@@ -1,6 +1,7 @@
+/*
 use serenity::model::prelude::Message;
 use std::ops::{Deref, DerefMut};
-use std::thread::{self, sleep, spawn};
+use std::thread::{self, sleep};
 use std::time::Duration;
 
 pub struct DeleteOnDrop {
@@ -39,3 +40,4 @@ impl DerefMut for DeleteOnDrop {
         &mut self.message
     }
 }
+*/
