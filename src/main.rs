@@ -1,12 +1,11 @@
 //! # Colour Bot V2.
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
-#![feature(catch_expr, plugin, decl_macro)]
+#![feature(plugin, decl_macro, custom_derive)]
 #![plugin(rocket_codegen)]
 
 extern crate bigdecimal;
 extern crate cairo;
-extern crate futures;
 extern crate hsl;
 extern crate hyper_native_tls;
 extern crate parallel_event_emitter;
@@ -18,7 +17,6 @@ extern crate prettytable;
 #[macro_use]
 extern crate diesel;
 extern crate crossbeam;
-extern crate reqwest;
 #[macro_use]
 extern crate derive_more;
 #[macro_use]
@@ -28,6 +26,7 @@ extern crate hyper;
 extern crate edit_distance;
 #[macro_use]
 extern crate juniper;
+#[macro_use]
 extern crate failure;
 extern crate juniper_rocket;
 extern crate num_traits;
@@ -41,12 +40,10 @@ extern crate resvg;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate crossbeam_channel;
 extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
 extern crate chashmap;
-extern crate futures_cpupool;
 extern crate serenity;
 extern crate svg;
 extern crate toml;
@@ -310,7 +307,8 @@ fn create_framework() -> StandardFramework {
                 let msg = msg.clone();
                 let _ = msg.react(emotes::RED_CROSS);
 
-                let _ = msg.channel_id
+                let _ = msg
+                    .channel_id
                     .send_message(|msg| {
                         msg.content("This command does not work outside of a DM to prevent spam, please DM me instead!")
                     })
@@ -335,34 +333,36 @@ fn create_framework() -> StandardFramework {
                 CLEANER.remove(&msg.id);
             }
 
-            let _ = res.map(|_| {
-                let result = msg.react(emotes::GREEN_TICK);
+            let _ =
+                res.map(|_| {
+                    let result = msg.react(emotes::GREEN_TICK);
 
-                let _ = result.map_err(|_| {
-                    let msg = msg.channel_id.send_message(|msg| {
-                        msg.content(
+                    let _ = result.map_err(|_| {
+                        let msg = msg.channel_id.send_message(|msg| {
+                            msg.content(
                             "Error trying to react to a message. Check permissions for the bot!",
                         )
-                    });
+                        });
 
-                    if let Ok(msg) = msg {
-                        delay_delete!(msg; 10);
-                    }
+                        if let Ok(msg) = msg {
+                            delay_delete!(msg; 10);
+                        }
+                    });
+                }).map_err(|CommandError(err)| {
+                    let _ = msg.react(emotes::RED_CROSS);
+
+                    let _ = msg
+                        .channel_id
+                        .send_message(|msg| {
+                            msg.content(format!(
+                                "There was an error running the last command ({}):\n\n{}",
+                                cmd_name, err
+                            ))
+                        })
+                        .map(|reply| {
+                            delay_delete!(reply; 8);
+                        });
                 });
-            }).map_err(|CommandError(err)| {
-                let _ = msg.react(emotes::RED_CROSS);
-
-                let _ = msg.channel_id
-                    .send_message(|msg| {
-                        msg.content(format!(
-                            "There was an error running the last command ({}):\n\n{}",
-                            cmd_name, err
-                        ))
-                    })
-                    .map(|reply| {
-                        delay_delete!(reply; 8);
-                    });
-            });
 
             // &msg doesn't last long enough to be moved into a new thread so clone it
             let msg = msg.clone();
@@ -388,7 +388,8 @@ fn create_framework() -> StandardFramework {
             };
 
             if let Some(contents) = contents {
-                let _ = msg.channel_id
+                let _ = msg
+                    .channel_id
                     .send_message(|m| m.content(contents))
                     .map(|reply| {
                         delay_delete!(reply, msg; 8);
@@ -401,17 +402,17 @@ fn main() {
     let mut client = Client::new(&CONFIG.discord.token, Handler)
         .expect("Could not initiate client. Check if your token is a *VALID* bot token.");
 
-    let pool = {
+    {
         let mut data = client.data.lock();
         data.insert::<Cleaner>(Cleaner::new());
-    };
+    }
 
     client.with_framework(create_framework());
 
     crossbeam::scope(|scope| {
-        // scope.spawn(move || {
-        //     webserver::server::create_server();
-        // });
+        scope.spawn(move || {
+            webserver::server::create_server();
+        });
 
         scope.spawn(move || {
             client.start()

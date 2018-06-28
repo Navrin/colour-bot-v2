@@ -80,7 +80,7 @@ fn refresh_list_exec(ctx: &mut Context, msg: &Message, _args: Args) -> Result<()
     let guild = guild.read();
 
     Ok(actions::guilds::update_channel_message(
-        guild,
+        guild.id,
         &connection,
         true,
     )?)

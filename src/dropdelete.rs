@@ -16,8 +16,6 @@ impl DeleteOnDrop {
 
 impl Drop for DeleteOnDrop {
     fn drop(&mut self) {
-        println!("dropping");
-
         let msg = self.message.clone();
         let del = self.delay;
         thread::spawn(move || {

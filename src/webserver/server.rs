@@ -1,9 +1,12 @@
 use CONFIG;
 
+use self::graphql::Context;
 use super::graphql;
 
 use rocket;
 use rocket::config::Config as RocketConfig;
+use rocket::http::Status;
+use rocket::request::{self, FromRequest, Outcome as RequestOutcome, Request};
 use rocket::response::content;
 use rocket::response::{NamedFile, Redirect};
 use rocket::State;
@@ -14,6 +17,26 @@ use failure::Error;
 
 use std::io;
 use std::path::{Path, PathBuf};
+
+type ContextOutcome = RequestOutcome<Context, ()>;
+impl<'a, 'r> FromRequest<'a, 'r> for Context {
+    type Error = ();
+
+    fn from_request(request: &'a Request<'r>) -> ContextOutcome {
+        use rocket::Outcome::*;
+
+        let auths: Vec<_> = request.headers().get("Authorization").collect();
+
+        let ctx = Context {
+            token: auths
+                .get(0)
+                .filter(|a| a.contains("Bearer "))
+                .map(|x| x.trim_left_matches("Bearer ").to_string()),
+        };
+
+        Success(ctx)
+    }
+}
 
 #[get("/")]
 fn index() -> io::Result<NamedFile> {
@@ -27,16 +50,17 @@ fn index_catch_all(all: PathBuf) -> io::Result<NamedFile> {
 }
 
 #[get("/graphql")]
-fn graphiql() -> content::Html<String> {
-    juniper_rocket::graphiql_source("/graphql")
+fn graphiql() -> content::Html<&'static str> {
+    content::Html(include_str!("./graphql/playground.html"))
 }
 
 #[post("/graphql", data = "<request>")]
 fn graphql_post(
     request: juniper_rocket::GraphQLRequest,
     schema: State<graphql::Schema>,
+    ctx: Context,
 ) -> juniper_rocket::GraphQLResponse {
-    request.execute(&schema, &())
+    request.execute(&schema, &ctx)
 }
 
 #[get("/login")]

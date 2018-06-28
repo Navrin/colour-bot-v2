@@ -1,7 +1,7 @@
-use serenity::framework::standard::CreateCommand;
-use serenity::model::prelude::{Message, User};
 use serenity::client::Context;
+use serenity::framework::standard::CreateCommand;
 use serenity::framework::standard::{Args, CommandError};
+use serenity::model::prelude::{Message, User};
 use serenity::utils::Colour;
 use serenity::CACHE;
 
@@ -13,7 +13,8 @@ pub fn info(cmd: CreateCommand) -> CreateCommand {
 pub fn info_exec(_ctx: &mut Context, msg: &Message, _: Args) -> Result<(), CommandError> {
     let cache = CACHE.read();
 
-    let channel = msg.channel()
+    let channel = msg
+        .channel()
         .ok_or(CommandError("Channel does not exist!".to_string()))?;
 
     let guilds = cache.all_guilds();
