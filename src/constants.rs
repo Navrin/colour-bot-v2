@@ -1,6 +1,6 @@
 pub mod commands {
     /// This defines the accepted amount of distance between two similar strings when fuzzy searching a list of strings.
-    pub const MAX_STRING_COMPARE_DELTA: usize = 3;
+    pub const MAX_STRING_COMPARE_DELTA: usize = 2;
 
     pub mod roles_edit {
         pub const COLOUR_DESCRIPTION: &str = "The hex colour that will be assigned";
@@ -12,6 +12,5 @@ pub mod commands {
 
 pub mod webserver {
     pub const DISCORD_API_URL: &str = "https://discordapp.com/api/v6";
-
-    // can use this in macros like `concat!`
+    // unused, but a reference for what the macro should be.
 }

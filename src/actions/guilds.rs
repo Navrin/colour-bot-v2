@@ -5,25 +5,25 @@ use failure::Error;
 use actions;
 
 use diesel;
-use diesel::result::Error as DieselError;
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::prelude::*;
+use diesel::result::Error as DieselError;
 
 use db::models::{Colour, Guild};
 
-use db::schema::guilds::table as guilds_table;
 use db::schema::guilds::dsl as g;
+use db::schema::guilds::table as guilds_table;
 
-use serenity::model::guild::{Guild as DiscordGuild, Member as DiscordMember};
-use serenity::model::user::User as DiscordUser;
 use serenity::framework::standard::CommandError;
+use serenity::model::guild::{Guild as DiscordGuild, Member as DiscordMember};
 use serenity::model::id::{ChannelId, GuildId, MessageId};
+use serenity::model::user::User as DiscordUser;
 use serenity::prelude::ModelError;
 use serenity::Error as SerenityError;
 use serenity::CACHE;
 
-use num_traits::cast::{FromPrimitive, ToPrimitive};
 use bigdecimal::BigDecimal;
+use num_traits::cast::{FromPrimitive, ToPrimitive};
 use parking_lot::RwLockReadGuard;
 
 /// Turns a discord guild into a db representation.
@@ -77,16 +77,15 @@ pub fn check_or_create_guild(id: &BigDecimal, connection: &PgConnection) -> Guil
 
 /// Converts a GuildId into a record representation.
 /// *Note:* unlike the similar colour command, this also saves the guild into the db.
-pub fn create_new_record_from_guild(
-    guild: &GuildId,
-    connection: &PgConnection,
-) -> Result<Guild, Error> {
+pub fn create_new_record_from_guild(guild: &GuildId) -> Result<Guild, Error> {
     let id = BigDecimal::from_u64(guild.0).ok_or(diesel::result::Error::NotFound)?;
 
-    let new_guild_record = Guild::with_id(id);
+    Ok(Guild::with_id(id))
+}
 
+pub fn save_record_into_db(record: &Guild, connection: &PgConnection) -> Result<Guild, Error> {
     Ok(diesel::insert_into(guilds_table)
-        .values(&new_guild_record)
+        .values(record)
         .get_result(connection)?)
 }
 
@@ -116,12 +115,19 @@ pub fn convert_user_to_member_result<'a>(
 
 /// updates the help message and colour list in the colour channel.
 pub fn update_channel_message(
-    guild: RwLockReadGuard<DiscordGuild>,
+    guild_id: GuildId,
     connection: &PgConnection,
     loudly_fail: bool,
 ) -> Result<(), CommandError> {
     let cache = CACHE.read();
     let self_id = cache.user.id.0;
+    let guild = cache
+        .guilds
+        .get(&guild_id)
+        .cloned()
+        .ok_or(CommandError("Guild does not exist in cache".to_string()))?;
+
+    let guild = guild.read();
 
     let guild_record = convert_guild_to_record(&guild.id, connection).ok_or(CommandError(
         "Guild does not exist in the database".to_string(),
@@ -143,7 +149,8 @@ pub fn update_channel_message(
     } else {
         match channel_id_result {
             Some(ch) => {
-                let old_messages = ch.messages(|filter| filter.limit(50))?
+                let old_messages = ch
+                    .messages(|filter| filter.limit(50))?
                     .iter()
                     .filter(|msg| msg.author.id.0 == self_id)
                     .map(|msg| msg.id)

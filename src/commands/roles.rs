@@ -41,13 +41,18 @@ pub fn get_colour_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(
     let discord_guild_id = discord_guild.id;
 
     let guild = actions::guilds::convert_guild_to_record(&discord_guild_id, &conn)
-        .or_else(|| actions::guilds::create_new_record_from_guild(&discord_guild_id, &conn).ok())
+        .or_else(|| {
+            actions::guilds::create_new_record_from_guild(&discord_guild_id)
+                .and_then(|record| actions::guilds::save_record_into_db(&record, &conn))
+                .ok()
+        })
         .ok_or(CommandError("Could not find/create a guild.".to_string()))?;
 
     let colour = actions::colours::find_from_name(&colour_name, &guild, &conn)
         .ok_or(CommandError(format!("Could not find a name that matches {}. Make sure you've used the correct spelling, and that you are typing a valid colour name like (red), and not a hex code like (#fff)", colour_name)))?;
 
-    let channel = msg.channel()
+    let channel = msg
+        .channel()
         .ok_or(CommandError("Channel is null".to_string()))?;
     let channel_id = channel.id();
 
@@ -123,7 +128,7 @@ pub fn add_colour_exec(
         ))
     })?;
 
-    actions::guilds::update_channel_message(guild, &connection, false)?;
+    actions::guilds::update_channel_message(guild.id, &connection, false)?;
 
     Ok(())
 }
@@ -166,7 +171,7 @@ pub fn remove_colour_exec(
         CommandError("Error while trying to delete the record. Aborting!".to_string())
     })?;
 
-    actions::guilds::update_channel_message(guild, &connection, false)?;
+    actions::guilds::update_channel_message(guild.id, &connection, false)?;
 
     if !keep_discord_role {
         let role_id = RoleId(colour.id.to_u64().ok_or(CommandError(
@@ -205,7 +210,8 @@ pub fn generate_colour_exec(
     let connection = utils::get_connection_or_panic();
 
     let colour = args.single::<ParsedColour>()?;
-    let name = args.iter::<String>()
+    let name = args
+        .iter::<String>()
         .collect::<Result<Vec<String>, _>>()
         .map_err(|_| CommandError("Error parsing colour name!".to_string()))
         .and_then(|name| {
@@ -256,7 +262,7 @@ pub fn generate_colour_exec(
     let guild = utils::get_guild_result(msg)?;
     let guild = guild.read();
 
-    actions::guilds::update_channel_message(guild, &connection, false)?;
+    actions::guilds::update_channel_message(guild.id, &connection, false)?;
 
     Ok(())
 }
@@ -343,7 +349,8 @@ pub fn edit_colour_exec(
                 ],
             ]);
 
-            let self_reply = msg.channel_id
+            let self_reply = msg
+                .channel_id
                 .send_message(|m| m.content(format!("```{}```", info_table)))?;
 
             delay_delete!(self_reply; 15);
@@ -361,7 +368,7 @@ pub fn edit_colour_exec(
                 &connection,
             )?;
 
-            actions::guilds::update_channel_message(guild, &connection, false)?;
+            actions::guilds::update_channel_message(guild.id, &connection, false)?;
         }
 
         ("colour", Some(unparsed_colour)) => {
@@ -380,7 +387,7 @@ pub fn edit_colour_exec(
                 &connection,
             )?;
 
-            actions::guilds::update_channel_message(guild, &connection, false)?;
+            actions::guilds::update_channel_message(guild.id, &connection, false)?;
         }
 
         ("role name", value @ Some(_)) => {
@@ -395,7 +402,7 @@ pub fn edit_colour_exec(
                 &connection,
             )?;
 
-            actions::guilds::update_channel_message(guild, &connection, false)?;
+            actions::guilds::update_channel_message(guild.id, &connection, false)?;
         }
 
         (act, _) => {

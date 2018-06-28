@@ -60,7 +60,8 @@ impl Contextable for Context {
         T::Value: Send + Sync,
     {
         let mut data = self.data.lock();
-        let item = data.get_mut::<T>()
+        let item = data
+            .get_mut::<T>()
             .expect("Failure. Data missing from typemap.");
 
         cb(item)

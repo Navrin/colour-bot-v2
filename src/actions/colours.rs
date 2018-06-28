@@ -130,6 +130,16 @@ pub fn remove_record(colour: &Colour, connection: &PgConnection) -> QueryResult<
     diesel::delete(colour).execute(connection)
 }
 
+pub fn remove_multiple(
+    ids: Vec<BigDecimal>,
+    guild: BigDecimal,
+    connection: &PgConnection,
+) -> QueryResult<Vec<Colour>> {
+    diesel::delete(colours_table.filter(c::id.eq(diesel::dsl::any(ids))))
+        .filter(c::guild_id.eq(guild))
+        .get_results(connection)
+}
+
 /// Turns a role into a colour record that *can be* inserted into the database.
 /// *Note:*  this doesn't actually save the role, use `save_record_to_db` for that.
 pub fn convert_role_to_record_struct(

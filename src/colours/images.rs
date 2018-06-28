@@ -182,7 +182,8 @@ impl ColourListBuilder {
                     .add(Text::new(section.name.clone()));
 
                 if self.dual_colour {
-                    let second_text = text.clone()
+                    let second_text = text
+                        .clone()
                         .set("x", section.x as usize + LIST_COLUMN_WIDTH);
 
                     path.add(second_text).add(text)

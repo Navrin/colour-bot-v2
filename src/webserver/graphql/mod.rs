@@ -1,55 +1,70 @@
 use CONFIG;
 
+mod models;
+use self::models::{
+    me::Me,
+    guild::Guild,
+    common::{TokenResponse, ColourResponse, ColourDeleteResponse, ColourUpdateInput},
+};
 use super::requests::HyperResponseExt;
+use std::thread;
 use actions;
+use std::str::FromStr;
 use bigdecimal::ToPrimitive;
+use bigdecimal::FromPrimitive;
+use bigdecimal::BigDecimal;
 use hyper::header::Authorization;
 use juniper;
-use juniper::FieldResult;
-use serenity::model::{guild::GuildInfo,
-                      id::{GuildId, RoleId},
-                      prelude::{Guild, User}};
+use juniper::{FieldError, FieldResult};
+use serenity::model::{
+    guild::{GuildInfo,Role},
+    id::{GuildId, RoleId, UserId},
+    prelude::{Guild as SerenityGuild, User},
+};
 use serenity::{cache::Cache, CACHE};
 use utils;
 
-#[derive(Debug, Display)]
-struct GenericError(pub String);
+#[derive(Debug, Display, Clone)]
+pub struct GenericError(pub String);
 
 use colours::ParsedColour;
 
 use db::models::Colour;
 
-header! { (ContentType, "Content-Type") => [String] }
-
 const API_VERSION: &str = "v0.0.1";
-
-#[derive(GraphQLObject, Deserialize, Debug)]
-struct TokenResponse {
-    access_token: String,
-    token_type: String,
-    expires_in: i32,
-    refresh_token: String,
-    scope: String,
-}
-
-#[derive(GraphQLObject, Serialize, Deserialize, Debug)]
-struct ColourReponse {
-    id: String,
-    name: String,
-    colour: String,
-}
 
 pub struct Query;
 pub struct Mutation;
 
-graphql_object!(Query: () |&self| {
+pub struct Context {
+    pub token: Option<String>,
+}
+
+impl Context {
+    fn get_token(&self) -> FieldResult<String> {
+        return Ok(self
+            .token
+            .clone()
+            .ok_or(GenericError("Missing auth token.".to_string()))?);
+    }
+}
+
+impl juniper::Context for Context {}
+
+graphql_object!(Query: Context |&self| {
+
+    field me(&executor) -> FieldResult<Me> {
+        let ctx = executor.context();
+
+        Ok(Me::find_from_token(&ctx.get_token()?)?)
+    }
+
     field version() -> &str {
         API_VERSION
     }
 
     field token(code: String) -> FieldResult<TokenResponse> {
         let client = get_client!();
-        let header = ContentType("application/x-www-form-urlencoded".into());
 
         let response = client.post(&api_path!("/oauth2/token"; &[
                 ("client_id", CONFIG.discord.id.clone()),
@@ -58,63 +73,226 @@ graphql_object!(Query: () |&self| {
                 ("redirect_uri", CONFIG.discord.callback_uri.clone()),
                 ("code", code)
             ]))
-            .header(header)
             .send()?
-            .oauth_json::<TokenResponse>()?;
+            .json::<TokenResponse>()?;
 
         Ok(response)
     }
 
-    field colours(guild: String, token: String) -> FieldResult<Vec<ColourReponse>> {
-        let guild_id = GuildId(guild.parse::<u64>()?);
-        let guilds = {
-            let client = get_client!();
-            client.get(api_path!("/users/@me/guilds"))
-                .header(make_auth!(token))
-                .send()?
-                .json::<Vec<GuildInfo>>()?
-        };
+    field guild(&executor, id: String) -> FieldResult<Guild> {
+        let ctx = executor.context();
+        let token = ctx.get_token()?;
 
-        let guild_ids = guilds.iter().map(|g| g.id).collect::<Vec<_>>();
-
-        if !guild_ids.contains(&guild_id) {
-            Err(GenericError("You can't get colours for a guild you don't belong in.".into()))?
-        }
-
-        let cache = CACHE.read();
-
-        let guild = cache.guilds.get(&guild_id)
-            .ok_or(GenericError("Requested guild does not exist within the bot cache.".into()))?
-            .read();
-
-
-        let connection = utils::get_connection_or_panic();
-        let guild_record = actions::guilds::convert_guild_to_record(&guild_id, &connection)
-            .ok_or(GenericError("The requested guild exists in the cache, but not in the database. Has a colour been added to the bot?".into()))?;
-
-        let colours = actions::colours::find_all(&guild_record, &connection).ok_or(GenericError("Error while trying to find the colour list".into()))?;
-
-        let data = colours
-            .iter()
-            .map(|colour| {
-                colour.id.to_u64()
-                    .and_then(|id| guild.roles.get(&RoleId(id)))
-                    .map(|role| ColourReponse {
-                        id: role.id.to_string(),
-                        name: colour.name.clone(),
-                        colour: format!("{}", ParsedColour::from(role.colour))
-                    })
-                    .ok_or(GenericError("There was an error converting the colours".into()))
-            })
-            .collect::<Result<Vec<ColourReponse>, GenericError>>()?;
-
-        Ok(data)
+        Guild::find_from_id(id, token)
     }
 });
 
-graphql_object!(Mutation: () | &self | {
+#[derive(GraphQLInputObject)]
+struct ColourCreateInput {
+    pub name: Option<String>,
+    pub hex: String,
+    pub role_id: Option<String>,
+}
+
+macro_rules! update_channel {
+    ($id:expr) => {
+        let id_copy = $id;
+
+        thread::spawn(move || {
+            let connection = utils::get_connection_or_panic();
+
+            let _ = actions::guilds::update_channel_message(GuildId(id_copy), &connection, false)
+                .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)));
+        });
+    };
+}
+
+graphql_object!(Mutation: Context | &self | {
     field version() -> &str {
         API_VERSION
+    }
+
+
+    field create_colour(&executor, guild: String, details: ColourCreateInput) -> FieldResult<ColourResponse> {
+        let guild_id = guild.parse::<u64>()?;
+        let ctx = executor.context();
+        let token = ctx.get_token()?;
+        let connection = utils::get_connection_or_panic();
+
+        let cache = CACHE.read();        
+        let guild_rw = cache.guilds.get(&GuildId(guild_id))
+            .ok_or(GenericError("Guild does not exist in the bot cache. You need to invite the bot first.".to_string()))?;
+        let guild = guild_rw.read();
+
+        let requestee = Me::find_from_token(&token)?;
+
+        let valid_permissions = 
+            requestee
+                .check_permissions(
+                    &guild, 
+                    |permissions| permissions.administrator() || permissions.manage_roles()
+                )?;
+    
+        if !valid_permissions {
+            Err(GenericError("You do not have the permissions required to perform this action!".to_string()))?
+        }
+
+        let parsed_colour = ParsedColour::from_str(&details.hex)?;
+
+        let name = details
+            .name
+            .clone()
+            .or_else(|| parsed_colour.find_name())
+            .ok_or(GenericError(format!("No name was found for the hex: {}, provide one.", &details.hex)))?;
+
+
+        let role =  details
+            .role_id
+            .clone()
+            .ok_or(FieldError::from(GenericError("This text should not be shown (is being mapped over)".to_string())))
+            .and_then(|role| role.parse::<u64>().map_err(FieldError::from))
+            .and_then(|id|
+                guild
+                    .roles
+                    .get(&RoleId(id))
+                    .cloned()
+                    .ok_or(FieldError::from(GenericError("Role was not found in the bot cache.".to_string())))
+            ) 
+            .or_else(|_| 
+                guild
+                    .create_role(|r| 
+                        r
+                            .name(&name)
+                            .colour(parsed_colour.into_role_colour().0.into())
+                    )
+                    .map_err(FieldError::from)
+            )?;
+
+
+        let colour_struct = 
+            actions::colours::convert_role_to_record_struct(name, &role, &guild.id)
+                .ok_or(GenericError("Error converting details for colour into a DB friendly representation".to_string()))?;
+
+        let colour_record = 
+            actions::colours::save_record_to_db(colour_struct, &connection)
+                .map_err(|_| GenericError("Error saving details into the database!".to_string()))?;
+
+        let response = ColourResponse::new_from(&colour_record, &parsed_colour);
+
+        update_channel!(guild_id);
+
+        Ok(response)        
+    }
+
+    field delete_colours(&executor, guild: String, ids: Vec<String>) -> FieldResult<Vec<ColourDeleteResponse>> {
+        let ctx = executor.context();
+        let token = ctx.get_token()?;
+        let connection = utils::get_connection_or_panic();
+
+        let guild_id = GuildId(guild.parse::<u64>()?);
+        let cache = CACHE.read();
+        let guild = cache.guilds.get(&guild_id)
+            .ok_or(GenericError(format!("Guild ID ({}) does not exist in the bot cache!", guild_id)))?;
+        let guild = guild.read();
+
+        let requestee = Me::find_from_token(&token)?;
+
+        let valid_permissions = requestee.check_permissions(
+            &guild, 
+            |permissions| permissions.administrator() || permissions.manage_roles()
+        )?;
+
+        if !valid_permissions {
+            Err(GenericError("You do not have the permissions required to perform this action.".to_string()))?
+        }
+        
+        let colour_ids = 
+            ids
+                .iter()
+                .map(String::as_str)
+                .map(BigDecimal::from_str)
+                .collect::<Result<Vec<BigDecimal>, _>>()?;
+
+        let guild_id_bigdec = BigDecimal::from_u64(guild_id.0)
+            .ok_or(GenericError("There was an issue getting the correct ID for the guild record.".to_string()))?;
+
+        let colours = actions::colours::remove_multiple(colour_ids, guild_id_bigdec, &connection)?;
+        update_channel!(guild_id.0);
+        
+        Ok(
+            colours
+                .iter()
+                .map(|c| ColourDeleteResponse {
+                    success: true,
+                    id: c.id.to_string()
+                })
+                .collect::<Vec<_>>()
+        )
+    }
+
+    field update_colour(&executor, colour_id: String, new_data: ColourUpdateInput) -> FieldResult<ColourResponse> {
+        let ctx = executor.context();
+        let token = ctx.get_token()?;
+        let connection = utils::get_connection_or_panic();
+
+        let requestee = Me::find_from_token(&token)?;
+        let role_id = RoleId(colour_id.parse::<u64>()?);
+
+        let colour = actions::colours::find_from_role_id(&role_id, &connection)
+            .ok_or(GenericError(format!("No colour was found for the given ID ({})", colour_id)))?;
+        
+        let guild_id = colour.guild_id.to_u64()
+            .ok_or(GenericError("Could not convert the guild_id for the colour into a u64".to_string()))?;
+        
+        let cache = CACHE.read();
+        let guild = cache.guilds.get(&GuildId(guild_id))
+            .ok_or(
+                GenericError(
+                    format!(
+                        "
+                        The guild id ({}) associated with this colour is no longer in the bot cache.
+                        The bot may have been possibily kicked while offline.
+                        ", 
+                    guild_id)
+                )
+            )?;
+        let guild = guild.read();
+
+        let valid_permissions = requestee.check_permissions(
+            &guild, 
+            |permissions| permissions.administrator() || permissions.manage_roles()
+        )?;
+
+        if !valid_permissions {
+            Err(GenericError("You do not have the required permissions to perform this command!".to_string()))?
+        }
+
+        let new_colour = new_data.hex.and_then(|h| ParsedColour::from_str(&h).ok());
+        let new_name = new_data.name.as_ref().map(String::as_str);
+
+        let params = actions::colours::UpdateActionParams {
+            colour,
+            new_colour,
+            new_name,
+            change_role_name: new_data.update_role_name,
+            guild: &guild,
+        };
+
+        let colour = actions::colours::update_colour_and_role(params, &connection)
+            .map_err(|e| GenericError(format!("There was an error trying to update the colour due to {:#?}!", e)))?;
+        
+        let role_id = RoleId(colour.id.to_u64().ok_or(GenericError("Failure converting id into u64".to_string()))?);
+        let role = guild.roles.get(&role_id)
+            .ok_or(GenericError("Could not find the role for the given role_id on the colour!".to_string()))?;
+
+
+        update_channel!(guild_id);
+
+        Ok(ColourResponse {
+            name: colour.name,
+            id: colour.id.to_string(),
+            colour: format!("{}", ParsedColour::from(role.colour)),
+        })
     }
 });
 

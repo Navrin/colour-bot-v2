@@ -1,11 +1,31 @@
+use webserver::graphql;
+
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::{self, from_value, Value};
 
 use failure::Error;
-
 use hyper::client::Response;
 use std::error::Error as ErrorTrait;
 use std::io::prelude::*;
+use webserver::graphql::GenericError;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase", untagged)]
+pub enum DiscordResponse<T> {
+    Ok(T),
+    Error { code: i64, message: String },
+    OAuthError { error: String },
+}
+
+impl<T> Into<Result<T, Error>> for DiscordResponse<T> {
+    fn into(self) -> Result<T, Error> {
+        match self {
+            DiscordResponse::Ok(v) => Ok(v),
+            DiscordResponse::Error { message, .. } => Err(format_err!("{}", message)),
+            DiscordResponse::OAuthError { error } => Err(format_err!("{}", error)),
+        }
+    }
+}
 
 #[derive(Debug, Display)]
 pub struct DiscordError(pub String);
@@ -13,6 +33,12 @@ pub struct DiscordError(pub String);
 impl ErrorTrait for DiscordError {
     fn description(&self) -> &str {
         &self.0
+    }
+}
+
+impl From<Error> for graphql::GenericError {
+    fn from(err: Error) -> graphql::GenericError {
+        graphql::GenericError(format!("{}", err))
     }
 }
 
@@ -32,29 +58,9 @@ pub trait HyperResponseExt {
     fn json<T: DeserializeOwned>(&mut self) -> Result<T, Error> {
         let text = self.text()?;
 
-        let val = serde_json::from_str::<T>(&text)?;
+        let val = serde_json::from_str::<DiscordResponse<T>>(&text)?;
 
-        Ok(val)
-    }
-
-    fn oauth_json<T: DeserializeOwned>(&mut self) -> Result<T, Error> {
-        let value = self.json::<Value>()?;
-
-        let lifetime_v = value.clone();
-
-        let err_opt = lifetime_v.get("error").map(|err| {
-            err.as_str()
-                .unwrap_or("Error field doesn't seem to be a string, check model")
-        });
-
-        let parse_attempt = from_value::<T>(value);
-
-        let result = match err_opt {
-            Some(v) => Err(DiscordError(v.to_string()))?,
-            None => parse_attempt?,
-        };
-
-        Ok(result)
+        val.into()
     }
 }
 

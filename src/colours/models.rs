@@ -202,7 +202,14 @@ impl<'a> From<Colour> for ParsedColour<'a> {
 
 impl<'a> Display for ParsedColour<'a> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), FmtError> {
-        write!(f, "#{r:X}{g:X}{b:X}", r = self.r, g = self.g, b = self.b)
+        // {:02X} means to print in uppercase hexidecimal but pad the output with 0s if its under 2 characters.
+        write!(
+            f,
+            "#{r:02X}{g:02X}{b:02X}",
+            r = self.r,
+            g = self.g,
+            b = self.b
+        )
     }
 }
 

@@ -32,7 +32,11 @@ pub fn set_channel_exec(
     let guild = guild.read();
 
     let guild_record = actions::guilds::convert_guild_to_record(&guild.id, &connection)
-        .or_else(|| actions::guilds::create_new_record_from_guild(&guild.id, &connection).ok())
+        .or_else(|| {
+            actions::guilds::create_new_record_from_guild(&guild.id)
+                .and_then(|record| actions::guilds::save_record_into_db(&record, &connection))
+                .ok()
+        })
         .ok_or(CommandError(
             "Couldn't convert this guild into its database representation!".to_string(),
         ))?;
