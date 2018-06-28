@@ -1,13 +1,11 @@
 use webserver::graphql;
 
-use serde::{de::DeserializeOwned, Deserialize};
-use serde_json::{self, from_value, Value};
+use serde::de::DeserializeOwned;
+use serde_json;
 
 use failure::Error;
 use hyper::client::Response;
-use std::error::Error as ErrorTrait;
 use std::io::prelude::*;
-use webserver::graphql::GenericError;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase", untagged)]
@@ -24,15 +22,6 @@ impl<T> Into<Result<T, Error>> for DiscordResponse<T> {
             DiscordResponse::Error { message, .. } => Err(format_err!("{}", message)),
             DiscordResponse::OAuthError { error } => Err(format_err!("{}", error)),
         }
-    }
-}
-
-#[derive(Debug, Display)]
-pub struct DiscordError(pub String);
-
-impl ErrorTrait for DiscordError {
-    fn description(&self) -> &str {
-        &self.0
     }
 }
 

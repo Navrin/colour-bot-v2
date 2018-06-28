@@ -1,21 +1,17 @@
 use actions::{self, colours::UpdateActionParams};
 // use collector::{CollectorItem, CollectorValue, CustomCollector};
 use colours::ParsedColour;
-use constants::commands::{roles_edit, MAX_STRING_COMPARE_DELTA};
-use dropdelete::DeleteOnDrop;
-use emotes;
+use constants::commands::roles_edit;
 use utils;
 // use COLLECTOR;
 
 use std::str::FromStr;
-use std::thread;
-use std::usize;
 
 use serenity::client::Context;
 use serenity::framework::standard::{Args, CommandError, CreateCommand};
 use serenity::model::{id::RoleId, permissions::Permissions, prelude::Message};
+use serenity::CACHE;
 
-use edit_distance::edit_distance;
 use num_traits::cast::ToPrimitive;
 use prettytable::Table;
 
@@ -30,7 +26,7 @@ pub fn get_colour(cmd: CreateCommand) -> CreateCommand {
         .exec(get_colour_exec)
 }
 
-pub fn get_colour_exec(ctx: &mut Context, msg: &Message, args: Args) -> Result<(), CommandError> {
+pub fn get_colour_exec(_: &mut Context, msg: &Message, args: Args) -> Result<(), CommandError> {
     let conn = utils::get_connection_or_panic();
     let colour_name = args.multiple::<String>()?.join(" ");
 
@@ -93,11 +89,7 @@ pub fn add_colour(cmd: CreateCommand) -> CreateCommand {
         .exec(add_colour_exec)
 }
 
-pub fn add_colour_exec(
-    ctx: &mut Context,
-    msg: &Message,
-    mut args: Args,
-) -> Result<(), CommandError> {
+pub fn add_colour_exec(_: &mut Context, msg: &Message, mut args: Args) -> Result<(), CommandError> {
     let connection = utils::get_connection_or_panic();
 
     let guild = msg.guild()
@@ -128,7 +120,10 @@ pub fn add_colour_exec(
         ))
     })?;
 
-    actions::guilds::update_channel_message(guild.id, &connection, false)?;
+    let cache = CACHE.read();
+    let self_id = cache.user.id.0;
+
+    actions::guilds::update_channel_message(guild, self_id, &connection, false)?;
 
     Ok(())
 }
@@ -145,7 +140,7 @@ pub fn remove_colour(cmd: CreateCommand) -> CreateCommand {
 }
 
 pub fn remove_colour_exec(
-    ctx: &mut Context,
+    _: &mut Context,
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
@@ -171,7 +166,10 @@ pub fn remove_colour_exec(
         CommandError("Error while trying to delete the record. Aborting!".to_string())
     })?;
 
-    actions::guilds::update_channel_message(guild.id, &connection, false)?;
+    let cache = CACHE.read();
+    let self_id = cache.user.id.0;
+
+    actions::guilds::update_channel_message(guild, self_id, &connection, false)?;
 
     if !keep_discord_role {
         let role_id = RoleId(colour.id.to_u64().ok_or(CommandError(
@@ -203,7 +201,7 @@ pub fn generate_colour(cmd: CreateCommand) -> CreateCommand {
 }
 
 pub fn generate_colour_exec(
-    ctx: &mut Context,
+    _: &mut Context,
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
@@ -262,7 +260,10 @@ pub fn generate_colour_exec(
     let guild = utils::get_guild_result(msg)?;
     let guild = guild.read();
 
-    actions::guilds::update_channel_message(guild.id, &connection, false)?;
+    let cache = CACHE.read();
+    let self_id = cache.user.id.0;
+
+    actions::guilds::update_channel_message(guild, self_id, &connection, false)?;
 
     Ok(())
 }
@@ -279,13 +280,16 @@ pub fn edit_colour(cmd: CreateCommand) -> CreateCommand {
 }
 
 pub fn edit_colour_exec(
-    ctx: &mut Context,
+    _: &mut Context,
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
     let connection = utils::get_connection_or_panic();
     let colour_name = args.single_quoted::<String>()?;
     let action = args.multiple::<String>()?.join(" ");
+
+    let cache = CACHE.read();
+    let self_id = cache.user.id.0;
 
     if action.len() <= 0 {
         return Err(CommandError(
@@ -296,13 +300,8 @@ pub fn edit_colour_exec(
     let guild_id = msg.guild_id().ok_or(CommandError(
         "This command only works on a guild.".to_string(),
     ))?;
-    let discord_guild = utils::get_guild_result(msg)?;
     let guild_record = actions::guilds::convert_guild_to_record(&guild_id, &connection)
         .ok_or(CommandError("No guild was found in the database. This means you have not created a colour on this server yet.".to_string()))?;
-
-    let colour_list = actions::colours::find_all(&guild_record, &connection).ok_or(CommandError(
-        "This guild doesn't have any colours! What are you trying to edit?".to_string(),
-    ))?;
 
     // no currying ;(
     let closest_colour = actions::colours::find_from_name(&colour_name, &guild_record, &connection)
@@ -368,7 +367,7 @@ pub fn edit_colour_exec(
                 &connection,
             )?;
 
-            actions::guilds::update_channel_message(guild.id, &connection, false)?;
+            actions::guilds::update_channel_message(guild, self_id, &connection, false)?;
         }
 
         ("colour", Some(unparsed_colour)) => {
@@ -387,7 +386,7 @@ pub fn edit_colour_exec(
                 &connection,
             )?;
 
-            actions::guilds::update_channel_message(guild.id, &connection, false)?;
+            actions::guilds::update_channel_message(guild, self_id, &connection, false)?;
         }
 
         ("role name", value @ Some(_)) => {
@@ -402,7 +401,7 @@ pub fn edit_colour_exec(
                 &connection,
             )?;
 
-            actions::guilds::update_channel_message(guild.id, &connection, false)?;
+            actions::guilds::update_channel_message(guild, self_id, &connection, false)?;
         }
 
         (act, _) => {

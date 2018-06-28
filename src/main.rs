@@ -10,7 +10,6 @@ extern crate hsl;
 extern crate hyper_native_tls;
 extern crate parallel_event_emitter;
 extern crate percent_encoding;
-#[macro_use]
 extern crate serde_urlencoded;
 #[macro_use]
 extern crate prettytable;
@@ -19,9 +18,7 @@ extern crate diesel;
 extern crate crossbeam;
 #[macro_use]
 extern crate derive_more;
-#[macro_use]
 extern crate rocket;
-#[macro_use]
 extern crate hyper;
 extern crate edit_distance;
 #[macro_use]
@@ -84,8 +81,6 @@ mod utils;
 mod webserver;
 
 use cleaner::Cleaner;
-// use collector::{Collector, CollectorItem, CollectorValue};
-use utils::Contextable;
 
 use std::thread;
 use std::time::Duration;
@@ -140,8 +135,6 @@ impl EventHandler for Handler {
             .map(|string| string.clone().to_string().to_lowercase())
             .map(|prefix| message.content.to_lowercase().starts_with(&prefix))
             .any(|id| id);
-
-        let emitted_message = message.clone();
 
         if message.author.bot {
             return;
@@ -293,7 +286,7 @@ fn create_framework() -> StandardFramework {
         .group("utils", |group| {
             group.command("info", commands::utils::info)
         })
-        .before(|ctx, msg, name| {
+        .before(|_, msg, name| {
             // culling help messages because they can flood the chat and dont delete themselves,
             // meaning they can linger in the colour channel.
             // therefore help messages only work in the dms.
@@ -327,7 +320,7 @@ fn create_framework() -> StandardFramework {
                 true
             }
         })
-        .after(|ctx, msg, cmd_name, res| {
+        .after(|_, msg, cmd_name, res| {
             // we're done with this message, sweep it.
             {
                 CLEANER.remove(&msg.id);

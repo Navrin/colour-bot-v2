@@ -8,6 +8,7 @@ use serenity::framework::standard::{CommandError, CreateCommand};
 use serenity::model::prelude::Message;
 use serenity::prelude::Context;
 use serenity::Error as SerenityError;
+use serenity::CACHE;
 
 /// Sends the colour list into the user's DMs.
 pub fn list_colours(cmd: CreateCommand) -> CreateCommand {
@@ -20,11 +21,7 @@ pub fn list_colours(cmd: CreateCommand) -> CreateCommand {
         .exec(list_colours_exec)
 }
 
-pub fn list_colours_exec(
-    ctx: &mut Context,
-    msg: &Message,
-    _args: Args,
-) -> Result<(), CommandError> {
+pub fn list_colours_exec(_: &mut Context, msg: &Message, _args: Args) -> Result<(), CommandError> {
     let connection = utils::get_connection_or_panic();
 
     let guild = utils::get_guild_result(msg)?;
@@ -70,17 +67,21 @@ pub fn refresh_list(cmd: CreateCommand) -> CreateCommand {
         .usage("")
         .example("")
         .max_args(0)
-        .exec(list_colours_exec)
+        .exec(refresh_list_exec)
 }
 
-fn refresh_list_exec(ctx: &mut Context, msg: &Message, _args: Args) -> Result<(), CommandError> {
+fn refresh_list_exec(_: &mut Context, msg: &Message, _args: Args) -> Result<(), CommandError> {
     let connection = utils::get_connection_or_panic();
 
     let guild = utils::get_guild_result(msg)?;
     let guild = guild.read();
 
+    let cache = CACHE.read();
+    let self_id = cache.user.id.0;
+
     Ok(actions::guilds::update_channel_message(
-        guild.id,
+        guild,
+        self_id,
         &connection,
         true,
     )?)

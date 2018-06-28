@@ -20,11 +20,11 @@ use serenity::model::id::{ChannelId, GuildId, MessageId};
 use serenity::model::user::User as DiscordUser;
 use serenity::prelude::ModelError;
 use serenity::Error as SerenityError;
-use serenity::CACHE;
+
+use parking_lot::RwLockReadGuard;
 
 use bigdecimal::BigDecimal;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
-use parking_lot::RwLockReadGuard;
 
 /// Turns a discord guild into a db representation.
 pub fn convert_guild_to_record(guild: &GuildId, connection: &PgConnection) -> Option<Guild> {
@@ -115,20 +115,11 @@ pub fn convert_user_to_member_result<'a>(
 
 /// updates the help message and colour list in the colour channel.
 pub fn update_channel_message(
-    guild_id: GuildId,
+    guild: RwLockReadGuard<DiscordGuild>,
+    self_id: u64,
     connection: &PgConnection,
     loudly_fail: bool,
 ) -> Result<(), CommandError> {
-    let cache = CACHE.read();
-    let self_id = cache.user.id.0;
-    let guild = cache
-        .guilds
-        .get(&guild_id)
-        .cloned()
-        .ok_or(CommandError("Guild does not exist in cache".to_string()))?;
-
-    let guild = guild.read();
-
     let guild_record = convert_guild_to_record(&guild.id, connection).ok_or(CommandError(
         "Guild does not exist in the database".to_string(),
     ))?;

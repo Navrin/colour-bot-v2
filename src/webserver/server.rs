@@ -5,8 +5,7 @@ use super::graphql;
 
 use rocket;
 use rocket::config::Config as RocketConfig;
-use rocket::http::Status;
-use rocket::request::{self, FromRequest, Outcome as RequestOutcome, Request};
+use rocket::request::{FromRequest, Outcome as RequestOutcome, Request};
 use rocket::response::content;
 use rocket::response::{NamedFile, Redirect};
 use rocket::State;

@@ -20,7 +20,7 @@ pub fn set_channel(cmd: CreateCommand) -> CreateCommand {
 }
 
 pub fn set_channel_exec(
-    ctx: &mut Context,
+    _: &mut Context,
     msg: &Message,
     mut args: Args,
 ) -> Result<(), CommandError> {
