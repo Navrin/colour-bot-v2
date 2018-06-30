@@ -93,7 +93,7 @@ pub enum HSLCmpType {
 
 /// Parsed colour methods.
 /// Represents colours for this bot, can be converted to the discord version, also has a naming component.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ParsedColour<'a> {
     pub name: Option<&'a str>,
     pub r: u8,
@@ -218,7 +218,23 @@ impl<'a> FromStr for ParsedColour<'a> {
         let colour = colour.replace("#", "");
         let mut chars = colour.chars();
 
-        let range = rgb(&mut chars).ok_or(ColourParseError::InvalidFormat)?;
+        let range = if colour.len() == 3 {
+            let mut extended_chars: Vec<char> = vec![];
+
+            for ch in chars {
+                let mut chs = vec![ch; 2];
+                extended_chars.append(&mut chs);
+            }
+
+            let extended_chars = extended_chars.iter().collect::<String>();
+            let mut chars = extended_chars.chars();
+
+            rgb(&mut chars)
+        } else {
+            rgb(&mut chars)
+        };
+
+        let range = range.ok_or(ColourParseError::InvalidFormat)?;
 
         let r = range[0];
         let g = range[1];
@@ -233,8 +249,22 @@ impl<'a> FromStr for ParsedColour<'a> {
     }
 }
 
+
 #[cfg(test)]
 mod test {
+    macro_rules! make_parser_many_case {
+        ($cases:expr) => {{
+            let case = $cases;
+
+            let iter = case
+                .iter()
+                .map(|it| ParsedColour::from_str(it));
+                
+                
+            (iter.clone().collect::<Result<Vec<_>, _>>(), iter.collect::<Vec<_>>())
+        }};
+    }
+
     use super::*;
 
     #[test]
@@ -244,5 +274,109 @@ mod test {
         let name = black.find_name().unwrap();
 
         assert_eq!(name, "Black")
+    }
+
+    #[test]
+    pub fn malformed_colour_codes_fail() {
+        let (result, entire) =  make_parser_many_case!(vec![
+            "foobaz",
+            "#gggZZZ",
+            "#fa",
+            "BA00gI",
+            "not a colour",
+            "zzzzzz",
+            "!.!.!.",
+            "😀😀😀😱😱😱"
+        ]);
+
+        assert!(result.is_err(), "A bad colour code passed the test! {:#?}", entire)
+    }
+
+    #[test]
+    pub fn correct_colour_codes_pass() {
+        let (result, entire) = make_parser_many_case!(vec![
+            "#cacabb",
+            "#cef",
+            "ced",
+            "123123",
+            "#123123",
+            "#fafafa",
+            "#fac",
+            "eee",
+            "#eee"
+        ]);
+
+        assert!(result.is_ok(), "A good colour failed the test! {:#?}", entire)
+    }
+
+
+    #[test]
+    pub fn colours_format_properly() {
+        let colour = ParsedColour {
+            name: None,
+            r: 255,
+            g: 0,
+            b: 0,
+        };
+
+        let output = format!("{}", colour);
+
+        assert_eq!(output, "#FF0000", "The output fmt for the colour {{ r: 255, g: 0, b: 0 }} was incorrect!")
+    }
+
+    #[test]
+    pub fn colours_translate_properly() {
+        let colour_hex = 0xFF00FF;
+        let colour_hex_str = "#ff00ff";
+
+        let colour = ParsedColour::from_str(colour_hex_str).unwrap();
+
+        assert_eq!(colour.to_hex(), colour_hex)
+    }
+
+    #[test]
+    pub fn hex_to_hsl_is_same() {
+        let colour = ParsedColour::from_str("#ff00ff").unwrap();
+
+        let hsl = colour.to_hsl();
+        
+        let new_colour = hsl.to_parsed();
+
+        assert_eq!(colour, new_colour, "Translation between hex->hsl->hex failed!")
+    }
+
+    #[test]
+    pub fn hsl_sort_is_correct() {
+        let codes = vec![
+            "#f00",
+            "#ffd000",
+            "#a1ff00",
+            "#00ff2f",
+            "#00eaff",
+            "#01f",
+            "#80f",
+            "#ff00e1",
+            "#ff0051"
+        ];
+
+        let colours = 
+            codes
+                .iter()
+                .map(|x| ParsedColour::from_str(x))
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+
+        let sorted_colours = 
+            ParsedColour::sort_list(colours.clone(), SortMethod::HSL);
+
+        let correctness = 
+            sorted_colours
+                .iter()
+                .zip(colours.iter())
+                .map(|(a,b)| a == b)
+                .all(|id| id);
+        
+        assert!(correctness, "There was a disparity between an already sorted set and the sorted output! pre-sorted: {:?}, code-sorted: {:?}", colours, sorted_colours)
+                
     }
 }
