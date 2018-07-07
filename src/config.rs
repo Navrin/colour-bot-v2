@@ -29,7 +29,7 @@ pub struct DatabaseConfig {
     pub username: String,
     pub password: String,
     pub address: String,
-    pub port: String,
+    pub port: Option<String>,
     pub database: String,
 }
 
@@ -39,8 +39,8 @@ pub struct ServerConfig {
     pub env: String,
     pub port: Option<u16>,
     pub logging: Option<bool>,
-    pub certs: String,
-    pub key: String,
+    pub certs: Option<String>,
+    pub key: Option<String>,
 }
 
 pub fn get_config_from_file() -> Result<Config, Error> {

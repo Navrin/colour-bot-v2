@@ -1,0 +1,32 @@
+version: '3.0'
+
+services:
+  db:
+    image: postgres
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data/pgdata
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+        - "5432:5432"
+  bin:
+    build: .
+    environment:
+      DATABASE_URL: postgres://colouradmin:password@db:5432/colours
+    ports: 
+      - "7777:7777"
+    volumes:
+      - ./config.toml:/app/config.toml
+      - registry:/root/.cargo/registry
+      - bins:/root/.cargo/bin
+    depends_on:
+      - db
+
+volumes:
+  registry:
+    driver: local
+  bins:
+    driver: local
+  pgdata: {}

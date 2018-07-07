@@ -8,12 +8,16 @@ pub struct DB(r2d2::Pool<ConnectionManager<PgConnection>>);
 
 impl DB {
     pub fn new(config: &DatabaseConfig) -> Result<DB, R2D2Error> {
+        let addr = match config.port {
+            Some(ref port) => format!("{}:{}", config.address, port),
+            None => config.address.clone(),
+        };
+
         let url = format!(
-            "postgres://{username}:{password}@{address}:{port}/{database}",
+            "postgres://{username}:{password}@{addr}/{database}",
             username = config.username,
             password = config.password,
-            address = config.address,
-            port = config.port,
+            addr = addr,
             database = config.database
         );
 
