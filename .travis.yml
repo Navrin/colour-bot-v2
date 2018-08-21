@@ -9,7 +9,7 @@ install:
   - docker-compose up -d
 
 script:
-  - docker exec colour-bot-v2_bin_1 bash -c "cargo test"
+  - docker-compose run bin bash -c "cargo test"
   - docker ps | grep -q colour-bot-v2
 
 rust:
