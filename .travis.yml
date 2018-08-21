@@ -6,7 +6,7 @@ services:
 
 # build and then test docker image.
 install:
-  - docker build -t colourbot
+  - docker build . -t colourbot
   - docker run -d -p 127.0.0.1:80:80 -name colourbot colourbot
 
 script:
