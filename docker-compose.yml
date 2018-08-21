@@ -1,4 +1,4 @@
-version: '3.0'
+version: "3.0"
 
 services:
   db:
@@ -10,12 +10,12 @@ services:
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-        - "5432:5432"
+      - "5432"
   bin:
     build: .
     environment:
       DATABASE_URL: postgres://colouradmin:password@db:5432/colours
-    ports: 
+    ports:
       - "7777:7777"
     volumes:
       - ./config.toml:/app/config.toml
