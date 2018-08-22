@@ -12,7 +12,7 @@ script:
   - docker-compose stop
   - docker-compose run bin bash -c "cargo test"
   - docker-compose start
-  - docker-compose ps | grep -q colour-bot-v2
+  - docker-compose ps | grep -q colour-bin
 
 rust:
   - nightly

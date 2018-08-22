@@ -1,7 +1,7 @@
 version: "3.0"
 
 services:
-  db:
+  colour-db:
     image: postgres
     restart: always
     volumes:
@@ -11,10 +11,10 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432"
-  bin:
+  colour-bin:
     build: .
     environment:
-      DATABASE_URL: postgres://colouradmin:password@db:5432/colours
+      DATABASE_URL: postgres://colouradmin:password@colour-db:5432/colours
     ports:
       - "7777:7777"
     volumes:
