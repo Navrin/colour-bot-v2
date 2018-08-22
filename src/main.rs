@@ -4,6 +4,9 @@
 #![feature(plugin, decl_macro, custom_derive)]
 #![plugin(rocket_codegen)]
 
+// FIXME: Warn/deny for this once -DIESEL- updates for this warning.
+#![allow(proc_macro_derive_resolution_fallback)]
+
 extern crate bigdecimal;
 extern crate cairo;
 extern crate hsl;
@@ -290,7 +293,7 @@ fn create_framework() -> StandardFramework {
             // culling help messages because they can flood the chat and dont delete themselves,
             // meaning they can linger in the colour channel.
             // therefore help messages only work in the dms.
-            let channel_opt = msg.channel_id.get();
+            let channel_opt = msg.channel_id.to_channel();
 
             if name.to_lowercase() == HELP_CMD_NAME {
                 if let Ok(Channel::Private(..)) = channel_opt {

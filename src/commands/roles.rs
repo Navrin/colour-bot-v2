@@ -41,8 +41,7 @@ pub fn get_colour_exec(_: &mut Context, msg: &Message, args: Args) -> Result<(),
             actions::guilds::create_new_record_from_guild(&discord_guild_id)
                 .and_then(|record| actions::guilds::save_record_into_db(&record, &conn))
                 .ok()
-        })
-        .ok_or(CommandError("Could not find/create a guild.".to_string()))?;
+        }).ok_or(CommandError("Could not find/create a guild.".to_string()))?;
 
     let colour = actions::colours::find_from_name(&colour_name, &guild, &conn)
         .ok_or(CommandError(format!("Could not find a name that matches {}. Make sure you've used the correct spelling, and that you are typing a valid colour name like (red), and not a hex code like (#fff)", colour_name)))?;
@@ -297,7 +296,7 @@ pub fn edit_colour_exec(
         ));
     }
 
-    let guild_id = msg.guild_id().ok_or(CommandError(
+    let guild_id = msg.guild_id.ok_or(CommandError(
         "This command only works on a guild.".to_string(),
     ))?;
     let guild_record = actions::guilds::convert_guild_to_record(&guild_id, &connection)
@@ -328,8 +327,7 @@ pub fn edit_colour_exec(
         .first()
         .ok_or(CommandError(
             "No action was given to the command! Please check the help command again".to_string(),
-        ))?
-        .to_lowercase();
+        ))?.to_lowercase();
     let lhs_second = split_action.get(1).map(|s| s.trim());
 
     match (rhs_first.trim(), lhs_second) {
