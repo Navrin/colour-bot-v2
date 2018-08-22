@@ -87,13 +87,24 @@ fn files(file: PathBuf) -> Option<NamedFile> {
 }
 
 pub fn create_server() {
-    let config = RocketConfig::build(
+    #[allow(unused_mut)]
+    let mut config = RocketConfig::build(
         CONFIG
             .server
             .env
             .parse()
             .expect("An incorrect value was given for the rocket staging env!"),
-    ).tls(CONFIG.server.certs.as_str(), CONFIG.server.key.as_str())
+    );
+
+    #[cfg(debug_assertions)]
+    {
+        let certs = CONFIG.server.certs.clone().unwrap();
+        let keys = CONFIG.server.key.clone().unwrap();
+
+        config = config.tls(certs.as_str(), keys.as_str());
+    }
+
+    let config = config
         .port(CONFIG.server.port.unwrap_or(7777))
         .finalize()
         .unwrap();

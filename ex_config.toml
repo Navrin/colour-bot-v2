@@ -1,22 +1,38 @@
 [discord]
-token = "XXXXXXXXXXXXXXXXXXX" # required. Discord bot token.
-id = "XXXXXXXXXXX" # Client ID for your app.
-secret = "XXXXXXXXX" # Client secret for your app.
-callback_uri = "http://localhost:7777/callback" # This needs to be first defined in your discord's app config
+# Discord bot token.
+token = "XXXXXXXXXXXXXXXXXXX" 
+# Client ID for your app.
+id = "XXXXXXXXXXX" 
+# Client secret for your app.
+secret = "XXXXXXXXX" 
+# This needs to be first defined in your discord's app config
+# You need this for the website login callback to work properly, otherwise oauth will return errors.
+callback_uri = "http://localhost:7777/callback" 
 
-playing_message = "with a rainbow" # Sets the "Playing" message displayed under the bot.
 
-
+# leave this as default if you're using docker 
 [database]
-username = "admin"
+username = "colouradmin"
 password = "password"
-address = "127.0.0.1"
+address = "db"
 port = "5432"
 database = "colours"
 
 [server]
+# This is the build path to the frontend section of the website.
+# The path should contain something like 
+# ls -> index.html, build.js, favicon.ico
 static_path = "./path/to/frontend"
-env = "development" # or "production"
+# can be "development", "staging", or "production"
+env = "development" 
+# extra logging, good for development
 logging = true
+# optional certs, needed for development, but do not use in production
+# run `./gen-certs.sh` to create the certs needed, assuming you have
+# openssl installed. 
+# In production, don't use these certs, and the source is set to disable 
+# usage of these certs if the bot is complied in release mode.
+# Instead, use nginx with certbot, or whatever SSL certification method 
+# you prefer.
 certs = "certs/cert.pem"
 key = "certs/key.pem"

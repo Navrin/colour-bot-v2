@@ -1,0 +1,17 @@
+language: rust
+
+sudo: required
+services:
+  - docker
+
+# # build and then test docker image.
+# install:
+#   - docker-compose build
+
+script:
+  - docker-compose stop
+  - docker-compose run colour-bin bash -c "cargo test"
+  - docker-compose start
+
+rust:
+  - nightly

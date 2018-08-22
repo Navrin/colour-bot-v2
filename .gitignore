@@ -7,17 +7,13 @@ config.toml
 *.svg
 certs
 rls
+.DS_Store
 
-# dependencies
 /colour-bot-site/node_modules
-
-# testing
 /colour-bot-site/coverage
-
-# production
 /colour-bot-site/build
 
-# misc
+# site dependencies
 /colour-bot-site/.DS_Store
 /colour-bot-site/.env.local
 /colour-bot-site/.env.development.local
