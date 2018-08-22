@@ -4,9 +4,9 @@ sudo: required
 services:
   - docker
 
-# build and then test docker image.
-install:
-  - docker-compose build
+# # build and then test docker image.
+# install:
+#   - docker-compose build
 
 script:
   - docker-compose stop
