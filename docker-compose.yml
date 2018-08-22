@@ -22,7 +22,7 @@ services:
       - registry:/root/.cargo/registry
       - bins:/root/.cargo/bin
     depends_on:
-      - db
+      - colour-db
 
 volumes:
   registry:
