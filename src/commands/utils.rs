@@ -38,7 +38,7 @@ pub fn info_exec(_ctx: &mut Context, msg: &Message, _: Args) -> Result<(), Comma
         msg.embed(|embed| {
             embed
                 .title("Colour Bot V2")
-                .colour(Colour::red())
+                .colour(Colour::RED)
                 .fields(fields)
         })
     })?;

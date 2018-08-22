@@ -1,3 +1,4 @@
+use diesel::{Identifiable, Insertable, Queryable};
 use std::default::Default;
 
 use serde_json::Map;
