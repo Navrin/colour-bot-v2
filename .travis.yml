@@ -10,7 +10,7 @@ services:
 
 script:
   - docker-compose stop
-  - docker-compose run bin bash -c "cargo test"
+  - docker-compose run colour-bin bash -c "cargo test"
   - docker-compose start
   - docker-compose ps | grep -q colour-bin
 
