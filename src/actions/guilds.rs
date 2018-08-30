@@ -161,13 +161,17 @@ pub fn update_channel_message(
 
                     msg.content(help_message)
                 }).and_then(|_| {
-                    fs::remove_file(path).map_err(|_| {
+                    fs::remove_file(&path).map_err(|_| {
                         SerenityError::Other("Error trying to delete the leftover colour image")
                     })
                 })?;
             }
             None => {}
         }
+    }
+
+    if fs::File::open(&path).is_ok() {
+        let _ = fs::remove_file(&path);
     }
 
     Ok(())

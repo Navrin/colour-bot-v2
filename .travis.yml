@@ -1,17 +1,18 @@
 language: rust
-
 sudo: required
+cache: cargo
 services:
   - docker
-
-# # build and then test docker image.
-# install:
-#   - docker-compose build
-
-script:
-  - docker-compose stop
-  - docker-compose run colour-bin bash -c "cargo test"
-  - docker-compose start
-
 rust:
   - nightly
+
+before_install:
+  - openssl aes-256-cbc -K $encrypted_7626713f97d2_key -iv $encrypted_7626713f97d2_iv
+    -in config.test.toml.enc -out config.test.toml -d
+
+script:
+  - docker-compose -f ./docker-compose.test.yml run test
+
+after_success:
+  - docker-compose -f ./docker-compose.test.yml run tarpaulin cargo tarpaulin --ciserver
+    travis-ci --coveralls $TRAVIS_JOB_ID

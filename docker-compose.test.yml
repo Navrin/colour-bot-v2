@@ -1,0 +1,62 @@
+version: "3.0"
+
+services:
+  testdb:
+    image: postgres
+    restart: always
+    volumes:
+      - pgdata-test:/var/lib/postgresql/data/pgdata
+      - ./init.test.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432"
+  base:
+    image: navrin/colour-bot-v2-base
+    build: .
+    command: "echo Done building."
+    ports:
+      - "7777:7777"
+    volumes:
+      - ./config.toml:/app/config.toml
+      - cargo:/root/.cargo/
+    depends_on:
+      - testdb
+
+  test:
+    build:
+      context: .
+      dockerfile: Testing.dockerfile
+    image: navrin/colour-bot-v2-testing
+    environment:
+      DATABASE_URL: postgres://colourtester:password@testdb:5432/colours_test
+    volumes:
+      - ./config.test.toml:/app/config.toml
+      - target_cache:/app/target
+      - cargo:/root/.cargo/
+    depends_on:
+      - base
+      - testdb
+
+  tarpaulin:
+    security_opt:
+      - seccomp:unconfined
+    build:
+      context: .
+      dockerfile: Tarpaulin.dockerfile
+    image: navrin/colour-bot-v2-tarpaulin
+    environment:
+      DATABASE_URL: postgres://colourtester:password@testdb:5432/colours_test
+    volumes:
+      - cargo:/root/.cargo/
+      - ./config.test.toml:/app/config.toml
+    depends_on:
+      - base
+      - testdb
+
+volumes:
+  target_cache:
+    driver: local
+  cargo:
+    driver: local
+  pgdata-test: {}

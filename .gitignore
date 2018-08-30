@@ -2,6 +2,7 @@
 /target/
 **/*.rs.bk
 config.toml
+config.test.toml
 .env
 *.png
 *.svg

@@ -32,9 +32,8 @@ use bigdecimal::BigDecimal;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use parking_lot::RwLockWriteGuard;
 
-use colours::images::Name;
-
 use colours::images::ColourListBuilder;
+use colours::images::Name;
 
 /// Searches the db for a colour from a name param for a guild.
 pub fn find_from_name(name: &str, guild: &Guild, connection: &PgConnection) -> Option<Colour> {
@@ -51,17 +50,17 @@ pub fn find_from_name(name: &str, guild: &Guild, connection: &PgConnection) -> O
 pub fn get_nearest_colour_for_name(name: &str, colours: &Vec<Colour>) -> Option<Colour> {
     let compare_name = |other| edit_distance(&name, other);
 
-    let (ending_distance, closest_colour) = colours.iter().fold(
-        (usize::MAX, colours.get(0)?),
-        |(distance, last), colour| {
-            let new_distance = compare_name(&colour.name);
-            if distance > new_distance {
-                (new_distance, colour)
-            } else {
-                (distance, last)
-            }
-        },
-    );
+    let (ending_distance, closest_colour) =
+        colours
+            .iter()
+            .fold((usize::MAX, colours.get(0)?), |(distance, last), colour| {
+                let new_distance = compare_name(&colour.name);
+                if distance > new_distance {
+                    (new_distance, colour)
+                } else {
+                    (distance, last)
+                }
+            });
 
     if ending_distance > MAX_STRING_COMPARE_DELTA {
         None
@@ -90,8 +89,7 @@ pub fn convert_records_to_roles_and_name<'a>(
             let id = colour.id.to_u64()?;
 
             Some((colour.name.clone(), guild.roles.get(&RoleId(id))?))
-        })
-        .collect::<Vec<(String, &DiscordRole)>>();
+        }).collect::<Vec<(String, &DiscordRole)>>();
 
     if roles.len() <= 0 {
         None
@@ -194,8 +192,7 @@ pub fn get_managed_roles_from_user(
             BigDecimal::from_u64(r.0)
                 .map(|id| colour_ids.contains(&id))
                 .unwrap_or(false)
-        })
-        .map(|id| id.clone())
+        }).map(|id| id.clone())
         .collect::<Vec<RoleId>>())
 }
 
@@ -224,9 +221,10 @@ pub fn generate_colour_image(
     colours: &Vec<Colour>,
     guild: &DiscordGuild,
 ) -> Result<String, CommandError> {
-    let roles_and_names = convert_records_to_roles_and_name(&colours, &guild).ok_or(CommandError(
-        "Error generating list. Possible cause: No colours exist in the database.".to_string(),
-    ))?;
+    let roles_and_names =
+        convert_records_to_roles_and_name(&colours, &guild).ok_or(CommandError(
+            "Error generating list. Possible cause: No colours exist in the database.".to_string(),
+        ))?;
 
     let colour_list_data = convert_roles_and_name_to_list_type(&roles_and_names);
 
@@ -275,8 +273,7 @@ pub fn update_colour_and_role<'a>(
             .name(match new_name {
                 Some(name) if change_role_name => name,
                 _ => &role.name,
-            })
-            .colour(if let Some(colour) = new_colour {
+            }).colour(if let Some(colour) = new_colour {
                 colour.into_role_colour().0 as u64
             } else {
                 role.colour.0 as u64

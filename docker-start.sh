@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cargo build --release
+
 ./wait-for-it.sh db:5432
 
 diesel setup
