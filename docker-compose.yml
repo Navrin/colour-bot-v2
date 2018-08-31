@@ -12,7 +12,7 @@ services:
     ports:
       - "5432"
   bin:
-    image: colour-bot-v2-base
+    image: navrin/colour-bot-v2-base
     build: .
     environment:
       DATABASE_URL: postgres://colouradmin:password@db:5432/colours

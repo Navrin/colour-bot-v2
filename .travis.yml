@@ -11,8 +11,12 @@ before_install:
     -in config.test.toml.enc -out config.test.toml -d
 
 script:
-  - docker-compose -f ./docker-compose.test.yml run test
+  - make test
 
 after_success:
-  - docker-compose -f ./docker-compose.test.yml run tarpaulin cargo tarpaulin --ciserver
-    travis-ci --coveralls $TRAVIS_JOB_ID
+  - make coverage TRAVIS_JOB_ID=$TRAVIS_JOB_ID
+  - if [[ "$TRAVIS_BRANCH" == "master" ]];
+    docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD ;
+    make build ;
+    make upload ;
+    fi
