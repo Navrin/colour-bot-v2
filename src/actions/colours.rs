@@ -236,7 +236,7 @@ pub fn generate_colour_image(
 
     let colour_list_path = colour_builder
         .create_image(colour_list_data, id.0.to_string())
-        .map_err(|_e| CommandError("Failure generating colour image.".to_string()))?;
+        .map_err(|e| CommandError(format!("Failure generating colour image. Reason: {:?}", e)))?;
 
     colour_list_path
         .to_str()
