@@ -44,7 +44,38 @@ macro_rules! do_test_transaction {
     }};
 }
 
+#[macro_export]
+macro_rules! login {
+    () => {{
+        use serenity::Client;
+        use Handler;
+        use CONFIG;
+
+        Client::new(&CONFIG.discord.token, Handler)
+            .expect("Could not login to discord, is there no internet connection?")
+    }};
+}
+
+#[macro_export]
+macro_rules! update_cache {
+    ($d:expr) => {{
+        use parking_lot::RwLock;
+        use serenity::http;
+        use std::sync::Arc;
+
+        let mut cache = ::serenity::CACHE.write();
+
+        cache.user = http::get_current_user().expect("failure at get current user");
+
+        cache
+            .guilds
+            .insert(MOCK_GUILD_DATA.id, Arc::new(RwLock::new($d)));
+    }};
+}
+
 #[cfg(test)]
 pub mod channel_help;
 #[cfg(test)]
 pub mod colours;
+#[cfg(test)]
+pub mod guilds;

@@ -9,19 +9,10 @@ use parking_lot::RwLock;
 use serenity::{
     http,
     model::{guild::Member, id::UserId, permissions::Permissions},
-    Client,
 };
 use std::{fs, sync::Arc};
 use utils;
-use Handler;
 use CONFIG;
-
-macro_rules! login {
-    () => {
-        Client::new(&CONFIG.discord.token, Handler)
-            .expect("Could not login to discord, is there no internet connection?")
-    };
-}
 
 fn get_colour_from_premade_list(name: &str, conn: &PgConnection) -> Option<Colour> {
     let alls = find_all(&DB_GUILD, conn).expect("Error getting guild colours for mock guild!");

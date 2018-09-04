@@ -16,7 +16,7 @@ impl Default for GuildSettings {
     }
 }
 
-#[derive(Queryable, Insertable, Identifiable, Debug)]
+#[derive(Queryable, Insertable, Identifiable, Debug, Clone)]
 #[table_name = "guilds"]
 pub struct Guild {
     pub id: BigDecimal,

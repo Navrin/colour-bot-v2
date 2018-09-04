@@ -1,8 +1,7 @@
 do $$
 begin
 
-DELETE FROM guilds;
-DELETE FROM colours;
+TRUNCATE guilds, colours CASCADE;
 
 INSERT INTO guilds VALUES 
     (482110165651554322, 482110165651554327, '{}'::json);

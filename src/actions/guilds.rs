@@ -76,7 +76,6 @@ pub fn check_or_create_guild(id: &BigDecimal, connection: &PgConnection) -> Guil
 }
 
 /// Converts a GuildId into a record representation.
-/// *Note:* unlike the similar colour command, this also saves the guild into the db.
 pub fn create_new_record_from_guild(guild: &GuildId) -> Result<Guild, Error> {
     let id = BigDecimal::from_u64(guild.0).ok_or(diesel::result::Error::NotFound)?;
 
@@ -136,7 +135,11 @@ pub fn update_channel_message(
         .map(|id| ChannelId(id));
 
     if loudly_fail {
-        channel_id_result.ok_or(CommandError("This server does not have a colour channel set! Add a channel with the `setchannel` command!".to_string()))?;
+        channel_id_result.ok_or_else(|| { 
+            let _ = fs::remove_file(&path);  
+            CommandError("This server does not have a colour channel set! Add a channel with the `setchannel` command!".to_string()) 
+        })?;
+
     } else {
         match channel_id_result {
             Some(ch) => {
