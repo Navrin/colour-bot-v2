@@ -190,8 +190,7 @@ impl ColourListBuilder {
                 } else {
                     path.add(text)
                 }
-            })
-            .collect::<Vec<Group>>();
+            }).collect::<Vec<Group>>();
 
         list.iter().fold(document, |doc, now| doc.add(now.clone()))
     }
@@ -205,8 +204,7 @@ impl ColourListBuilder {
             .zip(0..colours.len())
             .map(|(&(ref name, colour), height)| {
                 self.get_section_from_colour(name.0.clone(), colour, height, &colours)
-            })
-            .collect::<Vec<ColourSection>>()
+            }).collect::<Vec<ColourSection>>()
     }
 
     fn sort_colours(&self, colours: Vec<(Name, Colour)>) -> Vec<(Name, Colour)> {
@@ -219,8 +217,7 @@ impl ColourListBuilder {
             .map(|(name, colour)| ParsedColour {
                 name: Some(&name.0),
                 ..ParsedColour::from(*colour)
-            })
-            .collect();
+            }).collect();
 
         ParsedColour::sort_list(colours_remade, SortMethod::HSL)
             .iter()
@@ -229,8 +226,7 @@ impl ColourListBuilder {
                     Name(colour.name.unwrap().to_string()),
                     colour.into_role_colour(),
                 )
-            })
-            .collect()
+            }).collect()
     }
 
     pub fn create_image<S: Into<String>>(
@@ -258,6 +254,7 @@ impl ColourListBuilder {
         let surface = resvg::render_cairo::render_to_image(&svg, &opt)?;
 
         let mut path = PathBuf::new();
+        path.push("colour-images/");
         path.push(id.into());
         path.set_extension("png");
 

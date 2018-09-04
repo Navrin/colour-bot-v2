@@ -1,4 +1,4 @@
-const HELP_MESSAGE_FOR_CHANNEL: &str = "
+pub const HELP_MESSAGE_FOR_CHANNEL: &str = "
 **To get a colour:**
 
 1) Pick the colour you want on the list.
@@ -11,7 +11,7 @@ fn make_usage_example(name: &String) -> String {
         "To get the colour named {0}, type:
 
     {0}
-        ",
+",
         name
     )
 }
@@ -23,8 +23,16 @@ pub fn generate_help_message(names: Vec<String>) -> String {
         .map(make_usage_example)
         .collect::<Vec<String>>();
 
+    let empty_example = usage_examples.is_empty();
+
+    let usage_examples = if empty_example {
+        "*(no colours avalible :( consider adding some)*".to_string()
+    } else {
+        usage_examples.join("\n")
+    };
+
     format!(
-        " 
+        "
 {}
 
 *Example usage:*
@@ -33,7 +41,6 @@ pub fn generate_help_message(names: Vec<String>) -> String {
 
 *Colours avaliable:*
 ",
-        HELP_MESSAGE_FOR_CHANNEL,
-        &usage_examples.join("\n")
+        HELP_MESSAGE_FOR_CHANNEL, usage_examples
     )
 }

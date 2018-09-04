@@ -1,7 +1,7 @@
 version: "3.0"
 
 services:
-  colour-db:
+  db:
     image: postgres
     restart: always
     volumes:
@@ -11,22 +11,20 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432"
-  colour-bin:
+  bin:
+    image: navrin/colour-bot-v2-base
     build: .
     environment:
-      DATABASE_URL: postgres://colouradmin:password@colour-db:5432/colours
+      DATABASE_URL: postgres://colouradmin:password@db:5432/colours
     ports:
       - "7777:7777"
     volumes:
       - ./config.toml:/app/config.toml
-      - registry:/root/.cargo/registry
-      - bins:/root/.cargo/bin
+      - cargo:/cargo
     depends_on:
-      - colour-db
+      - db
 
 volumes:
-  registry:
-    driver: local
-  bins:
+  cargo:
     driver: local
   pgdata: {}

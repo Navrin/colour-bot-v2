@@ -2,8 +2,6 @@ FROM rustlang/rust:nightly
 
 WORKDIR /app
 
-ADD . /app 
-
 RUN apt-get update &&\
     apt-get install -y\
     libcairo2-dev\
@@ -12,10 +10,11 @@ RUN apt-get update &&\
     libpangocairo-1.0-0\
     postgresql
 
-RUN cargo install diesel_cli --no-default-features --features postgres
+# installing in debug mode because it cuts down on build times
+RUN cargo install diesel_cli --debug --no-default-features --features postgres
 
+COPY . /app 
+ONBUILD COPY . /app
 EXPOSE 80 443
-
-RUN cargo build --release 
 
 CMD ["/app/docker-start.sh"]

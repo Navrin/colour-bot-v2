@@ -11,7 +11,6 @@ extern crate bigdecimal;
 extern crate cairo;
 extern crate hsl;
 extern crate hyper_native_tls;
-extern crate parallel_event_emitter;
 extern crate percent_encoding;
 extern crate serde_urlencoded;
 #[macro_use]
@@ -413,6 +412,18 @@ fn main() {
         scope.spawn(move || {
             client.start()
             .expect("Could not start the client! Check network connection, make sure the discord servers are up.");
+        });
+
+        scope.spawn(move || {
+            use std::io::prelude::*;
+
+            std::thread::sleep(std::time::Duration::from_secs(10));
+            let cache = ::serenity::CACHE.read();
+
+            let guild = cache.guilds.get(&::serenity::model::id::GuildId(482110165651554322)).unwrap().read();
+
+            let mut f = ::std::fs::File::create("./foo.json").unwrap();
+            f.write_all(::serde_json::to_string(&*guild).unwrap().as_bytes()).unwrap();
         });
     });
 }

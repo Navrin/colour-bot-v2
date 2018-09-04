@@ -16,12 +16,12 @@ impl Default for GuildSettings {
     }
 }
 
-#[derive(Queryable, Insertable, Identifiable, Debug)]
+#[derive(Queryable, Insertable, Identifiable, Debug, Clone)]
 #[table_name = "guilds"]
 pub struct Guild {
     pub id: BigDecimal,
     pub channel_id: Option<BigDecimal>,
-    settings: Value,
+    pub settings: Value,
 }
 
 impl Guild {
@@ -38,7 +38,7 @@ impl Guild {
     }
 }
 
-#[derive(Identifiable, Queryable, Associations, Insertable, Debug, Clone)]
+#[derive(Identifiable, Queryable, Associations, Insertable, Debug, Clone, PartialEq)]
 #[belongs_to(Guild)]
 #[table_name = "colours"]
 pub struct Colour {

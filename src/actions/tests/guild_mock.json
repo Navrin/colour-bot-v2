@@ -1,0 +1,139 @@
+{
+  "afk_channel_id": null,
+  "afk_timeout": 300,
+  "application_id": null,
+  "channels": [
+    {
+      "id": 482110165651554327,
+      "bitrate": null,
+      "parent_id": 482110165651554325,
+      "guild_id": 482110165651554322,
+      "type": 0,
+      "last_message_id": 484529766020677633,
+      "last_pin_timestamp": null,
+      "name": "general",
+      "permission_overwrites": [],
+      "position": 0,
+      "topic": null,
+      "user_limit": null,
+      "nsfw": false
+    },
+    {
+      "id": 482110165651554325,
+      "bitrate": 64000,
+      "parent_id": null,
+      "guild_id": 482110165651554322,
+      "type": 4,
+      "last_message_id": null,
+      "last_pin_timestamp": null,
+      "name": "Text Channels",
+      "permission_overwrites": [],
+      "position": 0,
+      "topic": null,
+      "user_limit": 0,
+      "nsfw": false
+    }
+  ],
+  "default_message_notifications": 0,
+  "emojis": [],
+  "explicit_content_filter": 0,
+  "features": [],
+  "icon": null,
+  "id": 482110165651554322,
+  "joined_at": "2018-08-23T10:40:53.899+00:00",
+  "large": false,
+  "member_count": 2,
+  "members": [
+    {
+      "deaf": false,
+      "guild_id": 482110165651554322,
+      "joined_at": "2018-08-23T10:40:53.899+00:00",
+      "mute": false,
+      "nick": null,
+      "roles": [482137148334538753],
+      "user": {
+        "id": 328671801246744576,
+        "avatar": null,
+        "bot": true,
+        "discriminator": 3082,
+        "username": "colour-bot-tester"
+      }
+    },
+    {
+      "deaf": false,
+      "guild_id": 482110165651554322,
+      "joined_at": "2018-08-23T08:53:40.702+00:00",
+      "mute": false,
+      "nick": null,
+      "roles": [],
+      "user": {
+        "id": 216405997537853441,
+        "avatar": "a_408d7cfdf41326e7d676e7becfd4400b",
+        "bot": false,
+        "discriminator": 621,
+        "username": "Nav"
+      }
+    }
+  ],
+  "mfa_level": 0,
+  "name": "colour-bot-testing-server",
+  "owner_id": 216405997537853441,
+  "presences": [],
+  "region": "sydney",
+  "roles": [
+    {
+      "id": 483501321945612319,
+      "color": 11342935,
+      "hoist": false,
+      "managed": false,
+      "mentionable": true,
+      "name": "Red",
+      "permissions": 104324161,
+      "position": 3
+    },
+    {
+      "id": 482137148334538753,
+      "color": 0,
+      "hoist": false,
+      "managed": true,
+      "mentionable": false,
+      "name": "colour-bot-tester",
+      "permissions": 2080638206,
+      "position": 4
+    },
+    {
+      "id": 484529706037805056,
+      "color": 10181046,
+      "hoist": false,
+      "managed": false,
+      "mentionable": true,
+      "name": "Example Role",
+      "permissions": 104324161,
+      "position": 1
+    },
+    {
+      "id": 483501363708297225,
+      "color": 3066993,
+      "hoist": false,
+      "managed": false,
+      "mentionable": true,
+      "name": "Green",
+      "permissions": 104324161,
+      "position": 2
+    },
+    {
+      "id": 482110165651554322,
+      "color": 0,
+      "hoist": false,
+      "managed": false,
+      "mentionable": false,
+      "name": "@everyone",
+      "permissions": 104324161,
+      "position": 0
+    }
+  ],
+  "splash": null,
+  "system_channel_id": 482110165651554327,
+  "verification_level": 0,
+  "voice_states": []
+}
