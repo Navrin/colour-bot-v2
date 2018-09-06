@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+// snowflake ids don't need to be readable
+#![allow(unreadable_literal)]
 
 use bigdecimal::BigDecimal;
 use db::models::Guild as DBGuild;

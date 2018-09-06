@@ -21,19 +21,19 @@ pub fn list_colours(cmd: CreateCommand) -> CreateCommand {
         .exec(list_colours_exec)
 }
 
-pub fn list_colours_exec(_: &mut Context, msg: &Message, _args: Args) -> Result<(), CommandError> {
+pub fn list_colours_exec(_: &mut Context, msg: &Message, _: Args) -> Result<(), CommandError> {
     let connection = utils::get_connection_or_panic();
 
     let guild = utils::get_guild_result(msg)?;
     let guild = guild.read();
 
     // TODO: Options and stuff, customization for the whole family!
-    let guild_record = actions::guilds::convert_guild_to_record(&guild.id, &connection).ok_or(
-        CommandError("No guild record found, you should create some colours first.".to_string()),
-    )?;
-    let colours = actions::colours::find_all(&guild_record, &connection).ok_or(CommandError(
-        "Error getting the colours for the guild.".to_string(),
-    ))?;
+    let guild_record =
+        actions::guilds::convert_guild_to_record(guild.id, &connection).ok_or_else(|| {
+            CommandError("No guild record found, you should create some colours first.".to_string())
+        })?;
+    let colours = actions::colours::find_all(&guild_record, &connection)
+        .ok_or_else(|| CommandError("Error getting the colours for the guild.".to_string()))?;
 
     let colour_list_path = actions::colours::generate_colour_image(&colours, &guild)?;
 
@@ -44,8 +44,7 @@ pub fn list_colours_exec(_: &mut Context, msg: &Message, _args: Args) -> Result<
                 "Here are the colours for the guild \"{}\".",
                 guild.name
             ))
-        })
-        .and_then(|_| {
+        }).and_then(|_| {
             fs::remove_file(colour_list_path).map_err(|_| {
                 SerenityError::Other("Error trying to delete the leftover colour image")
             })
@@ -70,7 +69,7 @@ pub fn refresh_list(cmd: CreateCommand) -> CreateCommand {
         .exec(refresh_list_exec)
 }
 
-fn refresh_list_exec(_: &mut Context, msg: &Message, _args: Args) -> Result<(), CommandError> {
+fn refresh_list_exec(_: &mut Context, msg: &Message, _: Args) -> Result<(), CommandError> {
     let connection = utils::get_connection_or_panic();
 
     let guild = utils::get_guild_result(msg)?;
@@ -79,10 +78,6 @@ fn refresh_list_exec(_: &mut Context, msg: &Message, _args: Args) -> Result<(), 
     let cache = CACHE.read();
     let self_id = cache.user.id.0;
 
-    Ok(actions::guilds::update_channel_message(
-        guild,
-        self_id,
-        &connection,
-        true,
-    )?)
+    actions::guilds::update_channel_message(&guild, self_id, &connection, true)?;
+    Ok(())
 }

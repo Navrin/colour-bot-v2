@@ -3,9 +3,8 @@
 //! A reimplmentation of the colour bot in a fully type-safe language.
 #![feature(plugin, decl_macro, custom_derive)]
 #![plugin(rocket_codegen)]
-
 // FIXME: Warn/deny for this once -DIESEL- updates for this warning.
-#![allow(proc_macro_derive_resolution_fallback)]
+#![allow(proc_macro_derive_resolution_fallback, unknown_lints)]
 
 extern crate bigdecimal;
 extern crate cairo;
@@ -20,9 +19,9 @@ extern crate diesel;
 extern crate crossbeam;
 #[macro_use]
 extern crate derive_more;
-extern crate rocket;
-extern crate hyper;
 extern crate edit_distance;
+extern crate hyper;
+extern crate rocket;
 #[macro_use]
 extern crate juniper;
 #[macro_use]
@@ -134,7 +133,7 @@ impl EventHandler for Handler {
     fn message(&self, mut ctx: Context, message: Message) {
         let starts_with_prefix = PREFIX_LIST
             .iter()
-            .map(|string| string.clone().to_string().to_lowercase())
+            .map(|string| string.to_string().to_lowercase().clone())
             .map(|prefix| message.content.to_lowercase().starts_with(&prefix))
             .any(|id| id);
 
@@ -161,9 +160,8 @@ impl EventHandler for Handler {
             .ok()
             .and_then(|guild| {
                 let id = guild.read().id;
-                actions::guilds::convert_guild_to_record(&id, &connection)
-            })
-            .and_then(|guild_record| guild_record.channel_id)
+                actions::guilds::convert_guild_to_record(id, &connection)
+            }).and_then(|guild_record| guild_record.channel_id)
             .and_then(|id| id.to_u64());
 
         let channel_id = message.channel_id;
@@ -186,14 +184,12 @@ impl EventHandler for Handler {
                         .map(|_| {
                             let _ = message.react(emotes::GREEN_TICK);
                             delay_delete!(message; 2);
-                        })
-                        .map_err(|CommandError(m)| {
+                        }).map_err(|CommandError(m)| {
                             let _ = message_clone.react(emotes::RED_CROSS);
                             let _ = channel_id
                                 .send_message(|msg| {
                                     msg.content(format!("Couldn't assign a colour due to: {}", m))
-                                })
-                                .map(|msg| {
+                                }).map(|msg| {
                                     delay_delete!(msg; 8);
                                 });
                         });
@@ -218,7 +214,7 @@ impl EventHandler for Handler {
                         Err(e) => return Err(e),
                     };
 
-                    let self_id = serenity::utils::with_cache(|cache| cache.user.id.clone());
+                    let self_id = serenity::utils::with_cache(|cache| cache.user.id);
 
                     messages
                         .iter()
@@ -232,13 +228,10 @@ impl EventHandler for Handler {
 
                             if msg.author.id == self_id {
                                 false
-                            } else if !CLEANER.contains_key(&msg.id) {
-                                true
                             } else {
-                                false
+                                !CLEANER.contains_key(&msg.id)
                             }
-                        })
-                        .for_each(|msg| {
+                        }).for_each(|msg| {
                             let _ = msg.delete();
                         });
 
@@ -374,10 +367,10 @@ fn create_framework() -> StandardFramework {
                     Some(format!("Expected {} arguments, got {}. Check help for examples on how to use this command.", min, given))
                 },
                 DispatchError::OnlyForGuilds => {
-                    Some(format!("This command only works in a guild."))
+                    Some("This command only works in a guild.".to_string())
                 },
                 DispatchError::LackOfPermissions(_) => {
-                    Some(format!("You are lacking permissions to execute this command. Verify you have the ability to edit and manipulate roles."))
+                    Some("You are lacking permissions to execute this command. Verify you have the ability to edit and manipulate roles.".to_string())
                 }
                 _ => None
             };

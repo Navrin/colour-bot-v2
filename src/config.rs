@@ -45,8 +45,8 @@ pub struct ServerConfig {
 
 pub fn get_config_from_file() -> Result<Config, Error> {
     let path = var("COLOUR_BOT_CONFIG")
-        .or(var("COLOR_BOT_CONFIG"))
-        .unwrap_or("./config.toml".into());
+        .or_else(|_| var("COLOR_BOT_CONFIG"))
+        .unwrap_or_else(|_| "./config.toml".into());
 
     let contents = File::open(path).and_then(|mut f| {
         let mut contents = String::new();

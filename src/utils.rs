@@ -28,16 +28,17 @@ pub fn get_or_search_role_from_arg(guild: &Guild, args: &mut Args) -> Result<Rol
             // roles
             //     .find(|val| val.name.contains(&role))
             //     .map(|c| c.clone())
+        }).ok_or_else(|| {
+            CommandError(format!(
+                "Cannot find a role that matches {}. Check spelling, or mention the role directly.",
+                role
+            ))
         })
-        .ok_or(CommandError(format!(
-            "Cannot find a role that matches {}. Check spelling, or mention the role directly.",
-            role
-        )))
 }
 
 pub fn get_guild_result(msg: &Message) -> Result<Arc<RwLock<Guild>>, CommandError> {
     msg.guild()
-        .ok_or(CommandError("Could not find guild. This command only works in a guild, if you are a in a PM / Group, please only use commands that do not require any roles".to_string()))
+        .ok_or_else(|| CommandError("Could not find guild. This command only works in a guild, if you are a in a PM / Group, please only use commands that do not require any roles".to_string()))
 }
 
 use typemap::Key;

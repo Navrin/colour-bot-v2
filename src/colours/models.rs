@@ -10,15 +10,15 @@ use std::str::FromStr;
 use hsl::HSL;
 use std::f64;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum ColourParseError {
     InvalidFormat,
 }
 
 impl ColourParseError {
     pub fn __description(&self) -> &str {
-        match self {
-            &ColourParseError::InvalidFormat => "Invalid format given.",
+        match *self {
+            ColourParseError::InvalidFormat => "Invalid format given.",
         }
     }
 }
@@ -86,7 +86,7 @@ impl<'a, 'b> From<&'b ParsedColour<'a>> for HSLColour<'a> {
 //     }
 // }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum HSLCmpType {
     Hue,
 }
@@ -101,13 +101,13 @@ pub struct ParsedColour<'a> {
     pub g: u8,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Copy)]
 pub enum SortMethod {
     HSL,
 }
 
 impl<'a> ParsedColour<'a> {
-    pub fn sort_list<T: Into<Self> + Clone>(colours: Vec<T>, method: SortMethod) -> Vec<Self> {
+    pub fn sort_list<T: Into<Self> + Clone>(colours: &[T], method: SortMethod) -> Vec<Self> {
         let colours: Vec<Self> = colours.iter().cloned().map(T::into).collect();
 
         match method {
@@ -131,21 +131,21 @@ impl<'a> ParsedColour<'a> {
         }
     }
 
-    pub fn into_role_colour(&self) -> Colour {
+    pub fn as_role_colour(&self) -> Colour {
         Colour::from_rgb(self.r, self.g, self.b)
     }
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn compute_distance(&self, other: &Self) -> f64 {
         f64::abs(
-            (other.r as f64 - self.r as f64).powf(2.0) 
-            + (other.b as f64 - self.b as f64).powf(2.0)
-            + (other.g as f64 - self.g as f64).powf(2.0),
+              (f64::from(other.r) - f64::from(self.r)).powf(2.0) 
+            + (f64::from(other.b) - f64::from(self.b)).powf(2.0)
+            + (f64::from(other.g) - f64::from(self.g)).powf(2.0),
         )
     }
 
     pub fn to_hex(&self) -> u64 {
-        self.b as u64 | (self.g as u64) << 8 | (self.r as u64) << 16
+        u64::from(self.b) | u64::from(self.g) << 8 | u64::from(self.r) << 16
     }
 
     pub fn find_nearest(&self, colours: &[Self]) -> Option<Self> {
@@ -326,6 +326,7 @@ mod test {
 
     #[test]
     pub fn colours_translate_properly() {
+        #[allow(unreadable_literal)]
         let colour_hex = 0xFF00FF;
         let colour_hex_str = "#ff00ff";
 
@@ -367,7 +368,7 @@ mod test {
                 .unwrap();
 
         let sorted_colours = 
-            ParsedColour::sort_list(colours.clone(), SortMethod::HSL);
+            ParsedColour::sort_list(&colours, SortMethod::HSL);
 
         let correctness = 
             sorted_colours

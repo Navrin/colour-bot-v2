@@ -22,7 +22,7 @@ impl DB {
         );
 
         let manager = ConnectionManager::<PgConnection>::new(url);
-        r2d2::Pool::builder().build(manager).map(|cm| DB(cm))
+        r2d2::Pool::builder().build(manager).map(DB)
     }
 
     pub fn make_connection(&self) -> Option<PooledConnection<ConnectionManager<PgConnection>>> {

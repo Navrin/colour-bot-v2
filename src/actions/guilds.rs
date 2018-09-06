@@ -27,7 +27,7 @@ use bigdecimal::BigDecimal;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
 /// Turns a discord guild into a db representation.
-pub fn convert_guild_to_record(guild: &GuildId, connection: &PgConnection) -> Option<Guild> {
+pub fn convert_guild_to_record(guild: GuildId, connection: &PgConnection) -> Option<Guild> {
     BigDecimal::from_u64(guild.0).and_then(|id| guilds_table.find(id).first(connection).ok())
 }
 
@@ -40,7 +40,7 @@ pub enum GuildCheckStatus {
 
 impl GuildCheckStatus {
     /// assuming having a guild and creating a new one is intended behaviour.
-    pub fn to_result(self) -> Result<Guild, DieselError> {
+    pub fn into_result(self) -> Result<Guild, DieselError> {
         match self {
             GuildCheckStatus::AlreadyExists(g) => Ok(g),
             GuildCheckStatus::NewlyCreated(g) => Ok(g),
@@ -76,7 +76,7 @@ pub fn check_or_create_guild(id: &BigDecimal, connection: &PgConnection) -> Guil
 }
 
 /// Converts a GuildId into a record representation.
-pub fn create_new_record_from_guild(guild: &GuildId) -> Result<Guild, Error> {
+pub fn create_new_record_from_guild(guild: GuildId) -> Result<Guild, Error> {
     let id = BigDecimal::from_u64(guild.0).ok_or(diesel::result::Error::NotFound)?;
 
     Ok(Guild::with_id(id))
@@ -91,7 +91,7 @@ pub fn save_record_into_db(record: &Guild, connection: &PgConnection) -> Result<
 /// Finds the given guild, then changes the `channel_id` attribute
 pub fn update_channel_id(
     guild: Guild,
-    channel: &ChannelId,
+    channel: ChannelId,
     connection: &PgConnection,
 ) -> Result<Guild, Error> {
     let id = BigDecimal::from_u64(channel.0).ok_or(diesel::result::Error::NotFound)?;
@@ -114,63 +114,55 @@ pub fn convert_user_to_member_result<'a>(
 
 /// updates the help message and colour list in the colour channel.
 pub fn update_channel_message(
-    guild: RwLockReadGuard<DiscordGuild>,
+    guild: &RwLockReadGuard<DiscordGuild>,
     self_id: u64,
     connection: &PgConnection,
     loudly_fail: bool,
 ) -> Result<(), CommandError> {
-    let guild_record = convert_guild_to_record(&guild.id, connection).ok_or(CommandError(
-        "Guild does not exist in the database".to_string(),
-    ))?;
+    let guild_record = convert_guild_to_record(guild.id, connection)
+        .ok_or_else(|| CommandError("Guild does not exist in the database".to_string()))?;
 
-    let colours = actions::colours::find_all(&guild_record, connection).ok_or(CommandError(
-        "Error trying to get list of colours.".to_string(),
-    ))?;
+    let colours = actions::colours::find_all(&guild_record, connection)
+        .ok_or_else(|| CommandError("Error trying to get list of colours.".to_string()))?;
 
     let path = actions::colours::generate_colour_image(&colours, &guild)?;
 
     let channel_id_result = guild_record
         .channel_id
         .and_then(|id| id.to_u64())
-        .map(|id| ChannelId(id));
+        .map(ChannelId);
 
     if loudly_fail {
         channel_id_result.ok_or_else(|| { 
             let _ = fs::remove_file(&path);  
             CommandError("This server does not have a colour channel set! Add a channel with the `setchannel` command!".to_string()) 
         })?;
+    } else if let Some(ch) = channel_id_result {
+        let old_messages = ch
+            .messages(|filter| filter.limit(50))?
+            .iter()
+            .filter(|msg| msg.author.id.0 == self_id)
+            .map(|msg| msg.id)
+            .collect::<Vec<MessageId>>();
 
-    } else {
-        match channel_id_result {
-            Some(ch) => {
-                let old_messages = ch
-                    .messages(|filter| filter.limit(50))?
-                    .iter()
-                    .filter(|msg| msg.author.id.0 == self_id)
-                    .map(|msg| msg.id)
-                    .collect::<Vec<MessageId>>();
-
-                if old_messages.len() > 0 {
-                    ch.delete_messages(old_messages)?;
-                }
-
-                ch.send_files(vec![path.as_str()], |msg| {
-                    let names = colours
-                        .iter()
-                        .map(|&Colour { ref name, .. }| name.clone())
-                        .collect::<Vec<_>>();
-
-                    let help_message = actions::channel_help::generate_help_message(names);
-
-                    msg.content(help_message)
-                }).and_then(|_| {
-                    fs::remove_file(&path).map_err(|_| {
-                        SerenityError::Other("Error trying to delete the leftover colour image")
-                    })
-                })?;
-            }
-            None => {}
+        if !old_messages.is_empty() {
+            ch.delete_messages(old_messages)?;
         }
+
+        ch.send_files(vec![path.as_str()], |msg| {
+            let names = colours
+                .iter()
+                .map(|&Colour { ref name, .. }| name.clone())
+                .collect::<Vec<_>>();
+
+            let help_message = actions::channel_help::generate_help_message(&names);
+
+            msg.content(help_message)
+        }).and_then(|_| {
+            fs::remove_file(&path).map_err(|_| {
+                SerenityError::Other("Error trying to delete the leftover colour image")
+            })
+        })?;
     }
 
     if fs::File::open(&path).is_ok() {

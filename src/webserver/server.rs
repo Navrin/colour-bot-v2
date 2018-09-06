@@ -1,3 +1,5 @@
+#![allow(needless_pass_by_value)]
+
 use CONFIG;
 
 use self::graphql::Context;
@@ -122,6 +124,5 @@ pub fn create_server() {
                 graphiql,
                 graphql_post,
             ],
-        )
-        .launch();
+        ).launch();
 }
