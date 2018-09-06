@@ -15,7 +15,7 @@ script:
 
 after_success:
   - make coverage TRAVIS_JOB_ID=$TRAVIS_JOB_ID
-  - if [[ "$TRAVIS_BRANCH" == "master" ]];
+  - if [[ "$TRAVIS_BRANCH" == "master" ]] then
     docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD ;
     make build ;
     make upload ;
