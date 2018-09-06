@@ -119,13 +119,11 @@ pub fn update_channel_message(
     connection: &PgConnection,
     loudly_fail: bool,
 ) -> Result<(), CommandError> {
-    let guild_record = convert_guild_to_record(guild.id, connection).ok_or_else(|| CommandError(
-        "Guild does not exist in the database".to_string(),
-    ))?;
+    let guild_record = convert_guild_to_record(guild.id, connection)
+        .ok_or_else(|| CommandError("Guild does not exist in the database".to_string()))?;
 
-    let colours = actions::colours::find_all(&guild_record, connection).ok_or_else(|| CommandError(
-        "Error trying to get list of colours.".to_string(),
-    ))?;
+    let colours = actions::colours::find_all(&guild_record, connection)
+        .ok_or_else(|| CommandError("Error trying to get list of colours.".to_string()))?;
 
     let path = actions::colours::generate_colour_image(&colours, &guild)?;
 
@@ -139,7 +137,6 @@ pub fn update_channel_message(
             let _ = fs::remove_file(&path);  
             CommandError("This server does not have a colour channel set! Add a channel with the `setchannel` command!".to_string()) 
         })?;
-
     } else if let Some(ch) = channel_id_result {
         let old_messages = ch
             .messages(|filter| filter.limit(50))?

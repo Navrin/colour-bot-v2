@@ -1,3 +1,4 @@
+use super::common::ColourResponse;
 use super::me::Me;
 use actions;
 use colours::ParsedColour;
@@ -9,8 +10,7 @@ use serenity::model::{
 };
 use serenity::CACHE;
 use utils;
-use webserver::graphql::{GenericError};
-use super::common::ColourResponse;
+use webserver::graphql::GenericError;
 
 #[derive(Clone, Debug)]
 pub struct Guild(SerenityGuild);
@@ -40,9 +40,9 @@ impl Guild {
         let guild_id = GuildId(id.parse::<u64>()?);
         let cache = CACHE.read();
 
-        let guild = cache.guilds.get(&guild_id).ok_or_else(|| GenericError(
-            "This guild does not exist within the bot cache.".to_string(),
-        ))?;
+        let guild = cache.guilds.get(&guild_id).ok_or_else(|| {
+            GenericError("This guild does not exist within the bot cache.".to_string())
+        })?;
         let guild = guild.read();
 
         if !guild
@@ -50,7 +50,7 @@ impl Guild {
             .contains_key(&UserId(requestee.info.id.parse::<u64>()?))
         {
             Err(GenericError(
-                "You cannot lookup a guild you aren't a member on!".to_string()
+                "You cannot lookup a guild you aren't a member on!".to_string(),
             ))?
         }
 

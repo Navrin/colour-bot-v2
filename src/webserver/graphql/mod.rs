@@ -5,22 +5,20 @@ use CONFIG;
 
 mod models;
 use self::models::{
-    me::Me,
+    common::{ColourDeleteResponse, ColourResponse, ColourUpdateInput, TokenResponse},
     guild::Guild,
-    common::{TokenResponse, ColourResponse, ColourDeleteResponse, ColourUpdateInput},
+    me::Me,
 };
 use super::requests::HyperResponseExt;
 use actions;
-use std::str::FromStr;
-use juniper;
-use bigdecimal::ToPrimitive;
-use bigdecimal::FromPrimitive;
 use bigdecimal::BigDecimal;
+use bigdecimal::FromPrimitive;
+use bigdecimal::ToPrimitive;
+use juniper;
 use juniper::{FieldError, FieldResult};
-use serenity::model::{
-    id::{GuildId, RoleId},
-};
+use serenity::model::id::{GuildId, RoleId};
 use serenity::CACHE;
+use std::str::FromStr;
 use utils;
 
 #[derive(Debug, Display, Clone)]
@@ -90,7 +88,6 @@ struct ColourCreateInput {
     pub hex: String,
     pub role_id: Option<String>,
 }
-
 
 graphql_object!(Mutation: Context | &self | {
     field version() -> &str {
