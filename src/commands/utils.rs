@@ -15,7 +15,7 @@ pub fn info_exec(_ctx: &mut Context, msg: &Message, _: Args) -> Result<(), Comma
 
     let channel = msg
         .channel()
-        .ok_or(CommandError("Channel does not exist!".to_string()))?;
+        .ok_or_else(|| CommandError("Channel does not exist!".to_string()))?;
 
     let guilds = cache.all_guilds();
     let guild_count = guilds.len();

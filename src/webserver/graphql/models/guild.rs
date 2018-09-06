@@ -25,8 +25,8 @@ pub struct Role {
 }
 
 impl Guild {
-    pub fn find_from_id(id: String, token: String) -> FieldResult<Guild> {
-        let requestee = Me::find_from_token(&token)?;
+    pub fn find_from_id(id: &str, token: &str) -> FieldResult<Guild> {
+        let requestee = Me::find_from_token(token)?;
         // let guild_ids =
         //     user_guilds
         //         .iter()
@@ -40,7 +40,7 @@ impl Guild {
         let guild_id = GuildId(id.parse::<u64>()?);
         let cache = CACHE.read();
 
-        let guild = cache.guilds.get(&guild_id).ok_or(GenericError(
+        let guild = cache.guilds.get(&guild_id).ok_or_else(|| GenericError(
             "This guild does not exist within the bot cache.".to_string(),
         ))?;
         let guild = guild.read();
@@ -74,11 +74,11 @@ graphql_object!(Guild: () | &self | {
 
     field colours() -> FieldResult<Vec<ColourResponse>> {
         let connection = utils::get_connection_or_panic();
-        let guild = actions::guilds::convert_guild_to_record(&self.0.id, &connection)
-            .ok_or(GenericError(format!("Could not find a guild for the id {}. Check if the bot has been added to the server before and has colours assinged to it", self.0.id)))?;
+        let guild = actions::guilds::convert_guild_to_record(self.0.id, &connection)
+            .ok_or_else(|| GenericError(format!("Could not find a guild for the id {}. Check if the bot has been added to the server before and has colours assinged to it", self.0.id)))?;
 
         let colours = actions::colours::find_all(&guild, &connection)
-            .ok_or(GenericError("Error while attemptting to get the colours for this guild.".to_string()))?;
+            .ok_or_else(|| GenericError("Error while attemptting to get the colours for this guild.".to_string()))?;
 
         Ok(
             colours

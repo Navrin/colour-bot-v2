@@ -114,7 +114,7 @@ impl ColourListBuilder {
         name: String,
         colour: Colour,
         height: usize,
-        colours: &Vec<(Name, Colour)>,
+        colours: &[(Name, Colour)],
     ) -> ColourSection {
         match self.list_type {
             ColourListType::BasicList => {
@@ -139,7 +139,7 @@ impl ColourListBuilder {
     pub fn generate_image_for_list(
         &self,
         document: Document,
-        colours: Vec<ColourSection>,
+        colours: &[ColourSection],
         (height, width, _): (usize, usize, usize),
     ) -> Document {
         let background = Rectangle::new()
@@ -195,19 +195,16 @@ impl ColourListBuilder {
         list.iter().fold(document, |doc, now| doc.add(now.clone()))
     }
 
-    pub fn transform_colours_to_sections(
-        &self,
-        colours: Vec<(Name, Colour)>,
-    ) -> Vec<ColourSection> {
+    pub fn transform_colours_to_sections(&self, colours: &[(Name, Colour)]) -> Vec<ColourSection> {
         colours
             .iter()
-            .zip(0..colours.len())
-            .map(|(&(ref name, colour), height)| {
-                self.get_section_from_colour(name.0.clone(), colour, height, &colours)
+            .enumerate()
+            .map(|(height, &(ref name, colour))| {
+                self.get_section_from_colour(name.0.clone(), colour, height, colours)
             }).collect::<Vec<ColourSection>>()
     }
 
-    fn sort_colours(&self, colours: Vec<(Name, Colour)>) -> Vec<(Name, Colour)> {
+    fn sort_colours(&self, colours: &[(Name, Colour)]) -> Vec<(Name, Colour)> {
         // get config for the sort type
 
         // cheat a little, replace the name in the colour struct with the given name
@@ -219,33 +216,33 @@ impl ColourListBuilder {
                 ..ParsedColour::from(*colour)
             }).collect();
 
-        ParsedColour::sort_list(colours_remade, SortMethod::HSL)
+        ParsedColour::sort_list(&colours_remade, SortMethod::HSL)
             .iter()
             .map(|colour| {
                 (
                     Name(colour.name.unwrap().to_string()),
-                    colour.into_role_colour(),
+                    colour.as_role_colour(),
                 )
             }).collect()
     }
 
     pub fn create_image<S: Into<String>>(
         &self,
-        colours: Vec<(Name, Colour)>,
+        colours: &[(Name, Colour)],
         id: S,
     ) -> Result<PathBuf, ColourBuilderError> {
         let columns = if self.dual_colour { 2 } else { 1 };
         let height = self.get_height_for_type(colours.len());
         let width = self.get_width_for_type(columns);
-        let sorted_colors = self.sort_colours(colours);
+        let sorted_colors = self.sort_colours(&colours);
 
-        let colours = self.transform_colours_to_sections(sorted_colors);
+        let colours = self.transform_colours_to_sections(&sorted_colors);
 
         let doc = svg::Document::new().set("viewBox", (0, 0, width, height));
 
         let doc = match self.list_type {
             ColourListType::BasicList => {
-                self.generate_image_for_list(doc, colours, (height, width, columns))
+                self.generate_image_for_list(doc, &colours, (height, width, columns))
             }
         };
 

@@ -11,7 +11,7 @@ fn can_transform_guild_to_record() {
     do_test_transaction!(|conn| {
         let id = MOCK_GUILD_DATA.id;
 
-        let guild = convert_guild_to_record(&id, conn);
+        let guild = convert_guild_to_record(id, conn);
 
         assert!(guild.is_some());
     })
@@ -73,7 +73,7 @@ fn can_create_guild_check_for_newly_created() {
 fn can_make_record_repr_from_id() {
     let id = MOCK_GUILD_DATA.id;
 
-    let guild = create_new_record_from_guild(&id);
+    let guild = create_new_record_from_guild(id);
 
     let guild = guild.expect("Error while converting the record!");
 
@@ -84,8 +84,7 @@ fn can_make_record_repr_from_id() {
 fn can_save_converted_record_to_db() {
     do_test_transaction!(|conn| {
         let id = GuildId(MOCK_GUILD_DATA.id.0 + 1);
-        let guild =
-            create_new_record_from_guild(&id).expect("Error converting guild id to record!");
+        let guild = create_new_record_from_guild(id).expect("Error converting guild id to record!");
 
         let saved = save_record_into_db(&guild, conn);
 
@@ -114,7 +113,7 @@ fn can_update_record_with_channel_id() {
 
         let id = channel.id;
 
-        let result = update_channel_id(DB_GUILD.clone(), &id, conn);
+        let result = update_channel_id(DB_GUILD.clone(), id, conn);
 
         http::delete_channel(channel.id.0).unwrap();
 
@@ -152,7 +151,7 @@ fn can_update_channel_message() {
         let guild = setup_channel!();
 
         let result = update_channel_message(
-            guild.read(),
+            &guild.read(),
             CONFIG.discord.id.parse().unwrap(),
             conn,
             false,
@@ -176,8 +175,12 @@ fn can_update_channel_message_with_failure() {
         conn.execute("UPDATE guilds SET channel_id = NULL WHERE id = 482110165651554322;")
             .unwrap();
 
-        let result =
-            update_channel_message(guild.read(), CONFIG.discord.id.parse().unwrap(), conn, true);
+        let result = update_channel_message(
+            &guild.read(),
+            CONFIG.discord.id.parse().unwrap(),
+            conn,
+            true,
+        );
 
         assert!(
             result.is_err(),

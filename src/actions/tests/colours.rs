@@ -89,7 +89,7 @@ fn can_convert_roles() {
 #[test]
 fn can_find_role_from_id() {
     do_test_transaction!(|conn| {
-        let found_role = find_from_role_id(&RED_COLOUR_ID, conn)
+        let found_role = find_from_role_id(RED_COLOUR_ID, conn)
             .expect("Needed Colour { name: \"Red\" }, got None");
 
         assert_eq!(found_role.name, "Red");
@@ -99,7 +99,7 @@ fn can_find_role_from_id() {
 #[test]
 fn can_find_none_for_none_existant_roles() {
     do_test_transaction!(|conn| {
-        let no_role = find_from_role_id(&RoleId(155686899439108096), conn);
+        let no_role = find_from_role_id(RoleId(155686899439108096), conn);
 
         assert!(
             no_role.is_none(),
@@ -156,7 +156,7 @@ fn can_not_find_role_for_non_existant_colour() {
 #[test]
 fn can_remove_record_from_db() {
     do_test_transaction!(|conn| {
-        let red = find_from_role_id(&RED_COLOUR_ID, conn).unwrap();
+        let red = find_from_role_id(RED_COLOUR_ID, conn).unwrap();
 
         let affected =
             remove_record(&red, conn).expect("Record did not get removed from the database.");
@@ -250,7 +250,7 @@ fn can_convert_role_to_record() {
         .roles
         .get(&EXAMPLE_ROLE_ID)
         .expect("Example role is not in the mock guild data");
-    let colour = convert_role_to_record_struct("colour".to_string(), role, &MOCK_GUILD_DATA.id);
+    let colour = convert_role_to_record_struct("colour".to_string(), role, MOCK_GUILD_DATA.id);
 
     let colour = colour.expect("Error during the conversion of the role to a record struct!");
 
@@ -272,13 +272,13 @@ fn can_save_record_to_database() {
     };
 
     do_test_transaction!(|conn| {
-        let result = save_record_to_db(colour, conn);
+        let result = save_record_to_db(&colour, conn);
 
         let result = result.expect("Failure while inserting record into database");
 
         assert_eq!(result.id.to_u64().unwrap(), EXAMPLE_ROLE_ID.0);
 
-        let found_role = find_from_role_id(&EXAMPLE_ROLE_ID, conn);
+        let found_role = find_from_role_id(EXAMPLE_ROLE_ID, conn);
 
         let found_role = found_role.expect("Could not find the inserted record in the DB!");
 
@@ -304,8 +304,8 @@ fn can_get_colours_from_user() {
         let mut member = get_member();
 
         let guild = MOCK_GUILD_DATA.clone();
-        let red_role = guild.roles.get(&RED_COLOUR_ID).unwrap();
-        let green_role = guild.roles.get(&GREEN_COLOUR_ID).unwrap();
+        let red_role = &guild.roles[&RED_COLOUR_ID];
+        let green_role = &guild.roles[&GREEN_COLOUR_ID];
 
         let roles = [red_role.id, green_role.id];
 
@@ -313,7 +313,7 @@ fn can_get_colours_from_user() {
         let _ = member.remove_roles(&roles);
 
         let result = member.add_roles(&roles);
-        let found_roles = get_managed_roles_from_user(&member, &guild.id.clone(), conn);
+        let found_roles = get_managed_roles_from_user(&member, guild.id, conn);
 
         let _ = member.remove_roles(&roles);
 
@@ -336,7 +336,7 @@ fn can_assign_a_colour_to_user() {
 
         let guild = MOCK_GUILD_DATA.clone();
 
-        let colour = guild.roles.get(&RED_COLOUR_ID).unwrap();
+        let colour = &guild.roles[&RED_COLOUR_ID];
 
         let guildrw = RwLock::new(guild.clone());
 
@@ -367,8 +367,8 @@ fn can_reassign_colours_to_managed_users() {
 
         let mut member = get_member();
         let guild = MOCK_GUILD_DATA.clone();
-        let red_colour = guild.roles.get(&RED_COLOUR_ID).unwrap();
-        let green_colour = guild.roles.get(&GREEN_COLOUR_ID).unwrap();
+        let red_colour = &guild.roles[&RED_COLOUR_ID];
+        let green_colour = &guild.roles[&GREEN_COLOUR_ID];
 
         member
             .add_role(green_colour)
@@ -464,14 +464,14 @@ fn can_update_a_role_and_the_record() {
             }).expect("Error while creating the role for the test!");
 
         let colour_record =
-            convert_role_to_record_struct("test".to_string(), &role, &MOCK_GUILD_DATA.id)
+            convert_role_to_record_struct("test".to_string(), &role, MOCK_GUILD_DATA.id)
                 .ok_or_else(|| {
                     role.delete()
                         .expect("failure at deleting role after failure");
                 }).expect("Error while converting role to a record");
 
-        let colour =
-            save_record_to_db(colour_record, conn).expect("Error saving a record to the database.");
+        let colour = save_record_to_db(&colour_record, conn)
+            .expect("Error saving a record to the database.");
 
         cached_guild.roles.insert(role.id, role.clone());
         {
@@ -501,7 +501,7 @@ fn can_update_a_role_and_the_record() {
 
         let role = roles
             .iter()
-            .find(|e| &e.id == &role.id)
+            .find(|e| e.id == role.id)
             .expect("role did not get updated on discord");
 
         let new_colour = new_colour.expect("Error while updating role and record!");

@@ -1,7 +1,9 @@
 use super::common::GuildInfo;
 use juniper::FieldResult;
 use serenity::model::{
-    guild::Guild, id::{GuildId, UserId}, Permissions,
+    guild::Guild,
+    id::{GuildId, UserId},
+    Permissions,
 };
 use serenity::CACHE;
 use webserver::graphql::GenericError;
@@ -58,16 +60,8 @@ impl Me {
                     .map(|id| GuildInfo {
                         cached: guilds.contains_key(&GuildId(id)),
                         ..guild
-                    })
-                    .filter(|g| {
-                        if cached_only {
-                            g.cached
-                        } else {
-                            true
-                        }
-                    })
-            })
-            .collect::<Vec<_>>();
+                    }).filter(|g| if cached_only { g.cached } else { true })
+            }).collect::<Vec<_>>();
 
         Ok(response)
     }
@@ -80,9 +74,12 @@ impl Me {
         let member = guild
             .members
             .get(&UserId(self.info.id.parse::<u64>()?))
-            .ok_or(GenericError(
-                "You cannot perform this action without being a member of the guild!".to_string(),
-            ))?;
+            .ok_or_else(|| {
+                GenericError(
+                    "You cannot perform this action without being a member of the guild!"
+                        .to_string(),
+                )
+            })?;
 
         let permissions = member.permissions()?;
 

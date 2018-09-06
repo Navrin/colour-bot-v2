@@ -1,3 +1,6 @@
+// double parens are from the macros
+#![allow(double_parens)]
+
 use CONFIG;
 
 mod models;
@@ -36,10 +39,10 @@ pub struct Context {
 
 impl Context {
     fn get_token(&self) -> FieldResult<String> {
-        return Ok(self
+        Ok(self
             .token
             .clone()
-            .ok_or(GenericError("Missing auth token.".to_string()))?);
+            .ok_or_else(|| GenericError("Missing auth token.".to_string()))?)
     }
 }
 
@@ -77,7 +80,7 @@ graphql_object!(Query: Context |&self| {
         let ctx = executor.context();
         let token = ctx.get_token()?;
 
-        Guild::find_from_id(id, token)
+        Guild::find_from_id(&id, &token)
     }
 });
 
@@ -103,7 +106,7 @@ graphql_object!(Mutation: Context | &self | {
 
         let cache = CACHE.read();        
         let guild_rw = cache.guilds.get(&GuildId(guild_id))
-            .ok_or(GenericError("Guild does not exist in the bot cache. You need to invite the bot first.".to_string()))?;
+            .ok_or_else(|| GenericError("Guild does not exist in the bot cache. You need to invite the bot first.".to_string()))?;
         let guild = guild_rw.read();
 
         let requestee = Me::find_from_token(&token)?;
@@ -125,45 +128,45 @@ graphql_object!(Mutation: Context | &self | {
             .name
             .clone()
             .or_else(|| parsed_colour.find_name())
-            .ok_or(GenericError(format!("No name was found for the hex: {}, provide one.", &details.hex)))?;
+            .ok_or_else(|| GenericError(format!("No name was found for the hex: {}, provide one.", &details.hex)))?;
 
 
         let role =  details
             .role_id
             .clone()
-            .ok_or(FieldError::from(GenericError("This text should not be shown (is being mapped over)".to_string())))
+            .ok_or_else(|| FieldError::from(GenericError("This text should not be shown (is being mapped over)".to_string())))
             .and_then(|role| role.parse::<u64>().map_err(FieldError::from))
             .and_then(|id|
                 guild
                     .roles
                     .get(&RoleId(id))
                     .cloned()
-                    .ok_or(FieldError::from(GenericError("Role was not found in the bot cache.".to_string())))
+                    .ok_or_else(|| FieldError::from(GenericError("Role was not found in the bot cache.".to_string())))
             ) 
             .or_else(|_| 
                 guild
                     .create_role(|r| 
                         r
                             .name(&name)
-                            .colour(parsed_colour.into_role_colour().0.into())
+                            .colour(parsed_colour.as_role_colour().0.into())
                     )
                     .map_err(FieldError::from)
             )?;
 
 
         let colour_struct = 
-            actions::colours::convert_role_to_record_struct(name, &role, &guild.id)
-                .ok_or(GenericError("Error converting details for colour into a DB friendly representation".to_string()))?;
+            actions::colours::convert_role_to_record_struct(name, &role, guild.id)
+                .ok_or_else(|| GenericError("Error converting details for colour into a DB friendly representation".to_string()))?;
 
         let colour_record = 
-            actions::colours::save_record_to_db(colour_struct, &connection)
+            actions::colours::save_record_to_db(&colour_struct, &connection)
                 .map_err(|_| GenericError("Error saving details into the database!".to_string()))?;
 
         let response = ColourResponse::new_from(&colour_record, &parsed_colour);
 
         let self_id = cache.user.id.0;
 
-        actions::guilds::update_channel_message(guild, self_id, &connection, false)
+        actions::guilds::update_channel_message(&guild, self_id, &connection, false)
             .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)))?;
 
         Ok(response)        
@@ -177,7 +180,7 @@ graphql_object!(Mutation: Context | &self | {
         let guild_id = GuildId(guild.parse::<u64>()?);
         let cache = CACHE.read();
         let guild = cache.guilds.get(&guild_id)
-            .ok_or(GenericError(format!("Guild ID ({}) does not exist in the bot cache!", guild_id)))?;
+            .ok_or_else(|| GenericError(format!("Guild ID ({}) does not exist in the bot cache!", guild_id)))?;
         let guild = guild.read();
 
         let requestee = Me::find_from_token(&token)?;
@@ -199,13 +202,13 @@ graphql_object!(Mutation: Context | &self | {
                 .collect::<Result<Vec<BigDecimal>, _>>()?;
 
         let guild_id_bigdec = BigDecimal::from_u64(guild_id.0)
-            .ok_or(GenericError("There was an issue getting the correct ID for the guild record.".to_string()))?;
+            .ok_or_else(|| GenericError("There was an issue getting the correct ID for the guild record.".to_string()))?;
 
         let colours = actions::colours::remove_multiple(colour_ids, guild_id_bigdec, &connection)?;
 
         let self_id = cache.user.id.0;
 
-        actions::guilds::update_channel_message(guild, self_id, &connection, false)
+        actions::guilds::update_channel_message(&guild, self_id, &connection, false)
                 .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)))?;
         
         Ok(
@@ -227,15 +230,15 @@ graphql_object!(Mutation: Context | &self | {
         let requestee = Me::find_from_token(&token)?;
         let role_id = RoleId(colour_id.parse::<u64>()?);
 
-        let colour = actions::colours::find_from_role_id(&role_id, &connection)
-            .ok_or(GenericError(format!("No colour was found for the given ID ({})", colour_id)))?;
+        let colour = actions::colours::find_from_role_id(role_id, &connection)
+            .ok_or_else(|| GenericError(format!("No colour was found for the given ID ({})", colour_id)))?;
         
         let guild_id = colour.guild_id.to_u64()
-            .ok_or(GenericError("Could not convert the guild_id for the colour into a u64".to_string()))?;
+            .ok_or_else(|| GenericError("Could not convert the guild_id for the colour into a u64".to_string()))?;
         
         let cache = CACHE.read();
         let guild = cache.guilds.get(&GuildId(guild_id))
-            .ok_or(
+            .ok_or_else(|| 
                 GenericError(
                     format!(
                         "
@@ -270,14 +273,14 @@ graphql_object!(Mutation: Context | &self | {
         let colour = actions::colours::update_colour_and_role(params, &connection)
             .map_err(|e| GenericError(format!("There was an error trying to update the colour due to {:#?}!", e)))?;
         
-        let role_id = RoleId(colour.id.to_u64().ok_or(GenericError("Failure converting id into u64".to_string()))?);
+        let role_id = RoleId(colour.id.to_u64().ok_or_else(|| GenericError("Failure converting id into u64".to_string()))?);
         let all_roles = guild.roles.clone();
         let role = all_roles.get(&role_id)
-            .ok_or(GenericError("Could not find the role for the given role_id on the colour!".to_string()))?;
+            .ok_or_else(|| GenericError("Could not find the role for the given role_id on the colour!".to_string()))?;
 
 
         let self_id = cache.user.id.0;
-        actions::guilds::update_channel_message(guild, self_id, &connection, false)
+        actions::guilds::update_channel_message(&guild, self_id, &connection, false)
                 .map_err(|e| GenericError(format!("Failure during channel check due to: {:#?}", e)))?;
 
         Ok(ColourResponse {

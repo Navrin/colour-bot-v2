@@ -18,7 +18,7 @@ To get the colour named French Lilac, type:
 fn help_message_forms_correctly() {
     let names = vec!["Shadow Green".to_string(), "French Lilac".to_string()];
 
-    let full_message = generate_help_message(names);
+    let full_message = generate_help_message(&names);
 
     assert_eq!(
         format!(
@@ -36,7 +36,7 @@ fn help_message_forms_correctly() {
 fn message_should_not_fail_on_empty_lists() {
     let names: Vec<String> = vec![];
 
-    let full_message = generate_help_message(names);
+    let full_message = generate_help_message(&names);
 
     println!("{}", full_message);
     assert!(full_message.contains("no colours"))

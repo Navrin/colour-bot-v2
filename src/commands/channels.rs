@@ -31,17 +31,18 @@ pub fn set_channel_exec(
     let guild = utils::get_guild_result(msg)?;
     let guild = guild.read();
 
-    let guild_record = actions::guilds::convert_guild_to_record(&guild.id, &connection)
+    let guild_record = actions::guilds::convert_guild_to_record(guild.id, &connection)
         .or_else(|| {
-            actions::guilds::create_new_record_from_guild(&guild.id)
+            actions::guilds::create_new_record_from_guild(guild.id)
                 .and_then(|record| actions::guilds::save_record_into_db(&record, &connection))
                 .ok()
-        })
-        .ok_or(CommandError(
-            "Couldn't convert this guild into its database representation!".to_string(),
-        ))?;
+        }).ok_or_else(|| {
+            CommandError(
+                "Couldn't convert this guild into its database representation!".to_string(),
+            )
+        })?;
 
-    actions::guilds::update_channel_id(guild_record, &channel_id, &connection)
+    actions::guilds::update_channel_id(guild_record, channel_id, &connection)
         .map(|_| ())
         .map_err(|e| CommandError(format!("Could not update the channel_id due to {}", e)))
 }

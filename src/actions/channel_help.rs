@@ -6,7 +6,7 @@ pub const HELP_MESSAGE_FOR_CHANNEL: &str = "
 3) When you see the green tick react, you will have the role.
 ";
 
-fn make_usage_example(name: &String) -> String {
+fn make_usage_example(name: &str) -> String {
     format!(
         "To get the colour named {0}, type:
 
@@ -16,10 +16,11 @@ fn make_usage_example(name: &String) -> String {
     )
 }
 
-pub fn generate_help_message(names: Vec<String>) -> String {
+pub fn generate_help_message(names: &[String]) -> String {
     let usage_examples = names
         .iter()
         .take(2)
+        .map(String::as_str)
         .map(make_usage_example)
         .collect::<Vec<String>>();
 
