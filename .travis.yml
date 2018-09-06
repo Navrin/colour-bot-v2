@@ -15,6 +15,7 @@ jobs:
     - stage: test
       script:
         - make test
+        - docker-compose -f ./docker-compose.test.yml down
 
     - stage: coverage
       script:
