@@ -91,7 +91,7 @@ use serenity::framework::standard::help_commands::with_embeds;
 use serenity::framework::standard::Args;
 use serenity::framework::standard::{CommandError, DispatchError};
 use serenity::framework::StandardFramework;
-use serenity::model::channel::{Channel, Message, Reaction};
+use serenity::model::channel::{Channel, Message};
 use serenity::model::gateway::Ready;
 use serenity::model::id::ChannelId;
 use serenity::prelude::Context;
@@ -111,22 +111,6 @@ struct Handler;
 impl EventHandler for Handler {
     // TODO: impl channel delete check
     // TODO: impl guild join setup and permissions check
-
-    fn reaction_add(&self, _: Context, react: Reaction) {
-        if let Ok(user) = react.user() {
-            if user.bot {
-                return;
-            }
-        }
-
-        // thread::spawn(move || {
-        //     let mut coll = COLLECTOR.0.lock().unwrap();
-
-        //     coll.emit_value(CollectorItem::Reaction, CollectorValue::Reaction(react))
-        //         .wait()
-        //         .expect("Error emitting reaction to Collector");
-        // });
-    }
 
     /// Message handler,
     /// should be managing the colour channel and the cleaning of the channel.
@@ -271,6 +255,7 @@ fn create_framework() -> StandardFramework {
                 .command("generate", commands::roles::generate_colour)
                 .command("edit", commands::roles::edit_colour)
                 .command("list", commands::lists::list_colours)
+                .command("clear", commands::roles::clear_colours)
             // .command("cycle", commands::roles::cycle_colours)
         })
         .group("channel", |group| {
