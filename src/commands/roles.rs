@@ -422,167 +422,34 @@ pub fn edit_colour_exec(
     Ok(())
 }
 
-// macro_rules! timeout_error {
-//     () => {
-//         CommandError("No reply was given after 15 seconds, terminating!".to_string())
-//     };
-// }
+pub fn clear_colours(cmd: CreateCommand) -> CreateCommand {
+    cmd.batch_known_as(&["clear_roles", "empty"])
+        .desc("Remove all colour roles from yourself")
+        .help_available(true)
+        .usage("clear")
+        .example("clear")
+        .exec(clear_colours_exec)
+}
 
-// pub fn cycle_colours(cmd: CreateCommand) -> CreateCommand {
-//     cmd.batch_known_as(&["cycle", "allroles", "addall"])
-//         .desc("Interactively edit every existing role on the server and add them to the bot")
-//         .guild_only(true)
-//         .required_permissions(Permissions::MANAGE_ROLES)
-//         .help_available(true)
-//         .usage("cycle")
-//         .example("cycle")
-//         .exec(cycle_colours_exec)
-// }
+pub fn clear_colours_exec(_: &mut Context, msg: &Message, _: Args) -> Result<(), CommandError> {
+    let connection = utils::get_connection_or_panic();
 
-// pub fn cycle_colours_exec(
-//     ctx: &mut Context,
-//     msg: &Message,
-//     mut args: Args,
-// ) -> Result<(), CommandError> {
-//     let connection = utils::get_connection_or_panic(ctx);
-//     let msg = msg.clone();
+    let id = msg
+        .guild_id
+        .ok_or_else(|| CommandError("This command can only be used in a guild!".to_string()))?;
+    let guild = utils::get_guild_result(msg)?;
+    let mut guild = guild.write();
 
-//     let guild_id = msg.guild_id().ok_or_else(|| CommandError(
-//         "This command only works on a guild.".to_string(),
-//     ))?;
+    let member = guild
+        .members
+        .get_mut(&msg.author.id)
+        .ok_or_else(|| CommandError("You are not part of this guild.".to_string()))?;
 
-//     let discord_guild_orig = utils::get_guild_result(&msg)?;
-//     let discord_guild = discord_guild_orig.read();
+    let roles = actions::colours::get_managed_roles_from_user(member, id, &connection)?;
 
-//     let guild_record = actions::guilds::convert_guild_to_record(&guild_id, &connection)
-//         .ok_or_else(|| CommandError("No guild was found in the database. This means you have not created a colour on this server yet.".to_string()))?;
+    if !roles.is_empty() {
+        member.remove_roles(roles.as_slice())?;
+    }
 
-//     let tracked = msg.channel_id.send_message(|m| {
-//         m.embed(|e| {
-//             e
-//                 .title("Cycling roles")
-//                 .description(
-//                     indoc!(
-//                         "This command will let you interactively cycle through all the existing roles on this server
-//                         It is recommended you perform this command in a mod channel with low activity.
-
-//                         To continue, reply with `<yes | y | continue>`"
-//                     )
-//                 )
-//         })
-//     })?;
-
-//     let mut tracked = DeleteOnDrop::new(tracked, 10);
-//     let discord_guild = discord_guild_orig.clone();
-
-//     thread::spawn(move || {
-//         let discord_guild = discord_guild.read();
-
-//         let result: Result<(), CommandError> = do catch {
-//             let custom_collector: CustomCollector = { COLLECTOR.get_custom() };
-//             let reply = custom_collector
-//                 .clone()
-//                 .get_message_reply(&msg)
-//                 .join()
-//                 .unwrap()
-//                 .ok_or(timeout_error!())?;
-//             let reply_content = reply.content.trim().to_lowercase();
-
-//             match reply_content.as_str() {
-//                 "yes" | "y" | "continue" => (),
-//                 _ => {
-//                     Err(CommandError(
-//                         "Sequence was manually aborted by the user!".to_string(),
-//                     ))?;
-//                 }
-//             }
-
-//             reply.delete()?;
-
-//             let everyone_role = discord_guild
-//             .roles
-//             .get(&RoleId(discord_guild.id.0))
-//             .ok_or_else(|| CommandError(
-//                 "This guild seems to... not have the everyone role? This error should never happen."
-//                     .to_string(),
-//             ))?;
-
-//             let roles = discord_guild
-//                 .roles
-//                 .values()
-//                 .filter(|role| role.name != "@everyone" && !role.permissions.administrator());
-
-//             for role in roles {
-//                 tracked.edit(|m| {
-//                     m.embed(|e| {
-//                         e.title(format!("Editing Role: \"{}\"", role.name))
-//                             .field(
-//                                 format!("Colour: {}", ParsedColour::from(role.colour)),
-//                                 "The colour that will be assigned (colour is on the left side).",
-//                                 false,
-//                             )
-//                             .field(
-//                                 "Permissions check",
-//                                 if role.permissions == everyone_role.permissions {
-//                                     format!("{} The permissions for this role are the same for the base everyone role.", emotes::GREEN_TICK)
-//                                 } else {
-//                                     format!("{} The permissions for this role **do not** match the base role. \nThis role may have special permissions that you might not want to give users, so double check!", emotes::RED_CROSS)
-//                                 },
-//                                 false,
-//                             )
-//                             .field(
-//                                 "Action",
-//                                 indoc!(
-//                                     "
-//                             Would you like to add this role to the list?
-
-//                             Type (`y` or `yes`) to include this colour
-//                             Type (`n` or `no`) to go to the next colour
-//                             Type (`finish` or `end`) to save your progress and finish editing
-//                             Type (`cancel` or `abort`) to **remove all progress** and finish editing
-//                             "
-//                                 ),
-//                                 false,
-//                             )
-//                     })
-//                 })?;
-
-//                 let reply = { COLLECTOR.get_custom() }
-//                     .get_message_reply(&msg)
-//                     .join()
-//                     .unwrap()
-//                     .ok_or(timeout_error!())?;
-
-//                 let reply_content = reply.content.trim();
-//                 reply.delete()?;
-
-//                 match reply_content.to_lowercase().as_str() {
-//                     "y" | "yes" => {}
-//                     "n" | "no" => {
-//                         continue;
-//                     }
-//                     "finish" | "end" => {
-//                         break;
-//                     }
-//                     "cancel" | "abort" => Err(CommandError(
-//                         "Sequence was manually aborted by user!".to_string(),
-//                     ))?,
-//                     _ => Err(CommandError(
-//                         "An invalid command was given, aborting!".to_string(),
-//                     ))?,
-//                 }
-//             }
-
-//             Ok(())
-//         };
-
-//         match result {
-//             Ok(_) => (),
-//             Err(e) => {
-//                 println!("{:#?}", e);
-//             }
-//         }
-//     });
-
-//     Ok(())
-// }
+    Ok(())
+}

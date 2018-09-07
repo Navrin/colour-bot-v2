@@ -4,6 +4,10 @@ pub const HELP_MESSAGE_FOR_CHANNEL: &str = "
 1) Pick the colour you want on the list.
 2) Type the name of the colour and send it in this channel.
 3) When you see the green tick react, you will have the role.
+
+**To clear your colour:**
+
+1) type \"!c clear\" (don't include the quotes.)
 ";
 
 fn make_usage_example(name: &str) -> String {
