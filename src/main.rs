@@ -2,7 +2,6 @@
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
 #![feature(plugin, decl_macro, custom_derive)]
-#![plugin(rocket_codegen)]
 // FIXME: Warn/deny for this once -DIESEL- updates for this warning.
 #![allow(proc_macro_derive_resolution_fallback, unknown_lints)]
 
@@ -16,25 +15,29 @@ extern crate serde_urlencoded;
 extern crate prettytable;
 #[macro_use]
 extern crate diesel;
+extern crate env_logger;
+extern crate futures;
 extern crate crossbeam;
 #[macro_use]
 extern crate derive_more;
 extern crate edit_distance;
 extern crate hyper;
-extern crate rocket;
 #[macro_use]
 extern crate juniper;
 #[macro_use]
 extern crate failure;
-extern crate juniper_rocket;
+extern crate actix;
+extern crate actix_web;
 extern crate num_traits;
 extern crate parking_lot;
 extern crate png;
 extern crate postgres;
+extern crate ctrlc;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate read_color;
 extern crate resvg;
+extern crate crossbeam_channel;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -43,6 +46,7 @@ extern crate serde_json;
 extern crate lazy_static;
 extern crate chashmap;
 extern crate serenity;
+extern crate openssl;
 extern crate svg;
 extern crate toml;
 extern crate typemap;
@@ -384,10 +388,49 @@ fn main() {
 
     crossbeam::scope(|scope| {
         scope.spawn(move || {
-            webserver::server::create_server();
+            use crossbeam_channel::bounded;
+
+            let (s, r) = bounded(1);
+            
+            ctrlc::set_handler(move || {
+                s.send(true);
+            }).expect("Error setting Ctrl-C handler");
+
+            r.recv();
+
+            println!("Bot and server terminating...!");
+            
+            ::std::process::exit(0);
         });
 
         scope.spawn(move || {
+            loop {
+                use std::thread;
+use std::time::Duration;
+use parking_lot::deadlock;
+
+        thread::sleep(Duration::from_secs(10));
+        let deadlocks = deadlock::check_deadlock();
+        if deadlocks.is_empty() {
+            continue;
+        }
+
+        println!("{} deadlocks detected", deadlocks.len());
+        for (i, threads) in deadlocks.iter().enumerate() {
+            println!("Deadlock #{}", i);
+            for t in threads {
+                println!("Thread Id {:#?}", t.thread_id());
+                println!("{:#?}", t.backtrace());
+            }
+        }
+    }
+        });
+
+        scope.spawn(move || {
+            webserver::server::create_server();
+        });
+
+        scope.spawn(|| {
             client.start()
             .expect("Could not start the client! Check network connection, make sure the discord servers are up.");
         });

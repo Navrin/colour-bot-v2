@@ -75,6 +75,11 @@ graphql_object!(Guild: () | &self | {
     field colours() -> FieldResult<Vec<ColourResponse>> {
         let connection = utils::get_connection_or_panic();
         let guild = actions::guilds::convert_guild_to_record(self.0.id, &connection)
+            .or_else(|| {
+                actions::guilds::create_new_record_from_guild(self.0.id)
+                    .and_then(|record| actions::guilds::save_record_into_db(&record, &connection))
+                    .ok()
+            })
             .ok_or_else(|| GenericError(format!("Could not find a guild for the id {}. Check if the bot has been added to the server before and has colours assinged to it", self.0.id)))?;
 
         let colours = actions::colours::find_all(&guild, &connection)

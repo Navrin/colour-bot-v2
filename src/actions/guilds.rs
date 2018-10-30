@@ -146,7 +146,9 @@ pub fn update_channel_message(
             .collect::<Vec<MessageId>>();
 
         if !old_messages.is_empty() {
-            ch.delete_messages(old_messages)?;
+            for msg in old_messages {
+                ch.delete_message(msg)?;
+            }
         }
 
         ch.send_files(vec![path.as_str()], |msg| {

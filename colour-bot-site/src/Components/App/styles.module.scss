@@ -1,42 +1,86 @@
 @import '../../variables';
 
-@mixin TopBar {
-    box-shadow: 0 1px rgba(0, 0, 0, 0.2);
-    z-index: 99;
-}
+$border: 5px solid rgba(255, 255, 255, 0.7);
 
 #App {
-    background: $darkBase;
-    display: grid;
-    grid-template: 5fr 95fr / 64px 2fr 8fr;
-
-    min-height: 100vh;
+    height: 100vh;
     width: 100vw;
+    padding: 3%;
 
-    #TopBarGuild {
-        @include TopBar;
-        grid-column: 2;
+    background: linear-gradient(0.1turn, #6823ae, #9820ac);
+
+    display: grid;
+    grid-template:
+        [row1-start] 'sidebar-header gap navigation' 2fr [row1-end]
+        [row2-start] 'sidebar        gap .' 0.5fr [row2-end]
+        [row3-start] 'sidebar        gap content' 15fr [row3-end]
+        / 25fr 4fr 60fr;
+
+    color: white;
+
+    .GridItem {
+        border: $border;
+        box-shadow: rgba(0, 0, 0, 0.5) 0px 2px 8px 0px;
     }
 
-    #TopBarAction {
-        @include TopBar;
-        grid-column: 3;
-    }
-
-    #Guildbar {
-        background: $darkThird;
+    #Header {
         grid-column: 1;
-        grid-row: 1 / span 2;
+        grid-row: 1;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2rem;
+    }
+
+    #Navigation {
+        grid-column: 3;
+        grid-row: 1;
+
+        display: flex;
+        flex-direction: row;
+        justify-content: space-evenly;
+        align-items: center;
     }
 
     #Sidebar {
-        grid-column: 2;
-        grid-row: 2;
-        background: $darkSecond;
+        padding: 5%;
+        border-right: $border;
+        border-left: $border;
+        border-bottom: $border;
+        grid-column: 1;
+        grid-row: 2 / span 2;
     }
 
-    #Main {
-        grid-row: 2;
+    #Content {
         grid-column: 3;
+        grid-row: 3;
     }
+}
+
+.Button {
+    font-family: 'Product Sans';
+    font-size: 1.5rem;
+
+    color: rgba(255, 255, 255, 0.7);
+
+    border-radius: 30px !important;
+    border: 3px solid #ffffff !important;
+
+    padding: 15px;
+
+    width: 20%;
+    height: 60px;
+
+    &[aria-selected='true'] {
+        background-color: rgba(255, 255, 255, 0.27);
+    }
+}
+
+.FailureNotification {
+    background-color: #b90004 !important;
+}
+
+.SuccessNotification {
+    background-color: #167111 !important;
 }

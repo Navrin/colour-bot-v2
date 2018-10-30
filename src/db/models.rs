@@ -22,6 +22,7 @@ pub struct Guild {
     pub id: BigDecimal,
     pub channel_id: Option<BigDecimal>,
     pub settings: Value,
+    pub legacy: Option<bool>,
 }
 
 impl Guild {
@@ -30,6 +31,7 @@ impl Guild {
             id,
             channel_id: None,
             settings: Value::Object(Map::new()),
+            legacy: Some(false),
         }
     }
 

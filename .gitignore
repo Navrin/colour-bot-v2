@@ -24,3 +24,5 @@ rls
 /colour-bot-site/npm-debug.log*
 /colour-bot-site/yarn-debug.log*
 /colour-bot-site/yarn-error.log*
+
+migrate.sql

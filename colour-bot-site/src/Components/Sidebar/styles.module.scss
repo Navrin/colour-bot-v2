@@ -1,0 +1,87 @@
+@import '../../variables';
+
+#Sidebar {
+    box-shadow: rgba(0, 0, 0, 0.5) 0px 2px 8px 0px;
+
+    padding: 5%;
+    border-right: $border;
+    border-left: $border;
+    border-bottom: $border;
+    grid-column: 1;
+    grid-row: 2 / span 2;
+
+    display: grid;
+
+    grid-template: 9fr 1fr / 1fr;
+}
+
+#SidebarSettings {
+    border: $border;
+
+    border-radius: 24px;
+    padding: 7.5px;
+
+    display: flex;
+    align-items: center;
+
+    & svg {
+        height: 40px;
+        width: 40px;
+        margin-right: 10px;
+    }
+}
+
+#SidebarList {
+    margin-bottom: 5px;
+}
+
+#SidebarSignOut {
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.SidebarItem {
+    $border: 3px solid;
+    $active-border: $border rgba(255, 255, 255, 1);
+
+    font-size: 1.2em;
+
+    padding-top: 5px;
+    padding-left: 7.5px;
+    padding-bottom: 5px;
+
+    margin-top: 5px;
+    margin-bottom: 5px;
+
+    border-left: $border rgba(0, 0, 0, 0);
+
+    &:hover {
+        border-left: $active-border;
+    }
+
+    &[aria-selected='true'] {
+        border-left: $active-border;
+    }
+}
+
+@mixin SidebarListSection {
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+#SidebarListActive {
+    @include SidebarListSection();
+}
+#SidebarListInactive {
+    @include SidebarListSection();
+}
+
+.SidebarItemText {
+    display: flex;
+    align-items: center;
+    align-content: center;
+
+    & svg {
+        margin-left: 10px;
+    }
+}

@@ -17,6 +17,7 @@ lazy_static! {
         id: BigDecimal::from(482110165651554322 as u64),
         channel_id: Some(BigDecimal::from(482110165651554327 as u64)),
         settings: serde_json::Value::Null,
+        legacy: Some(true),
     };
 }
 

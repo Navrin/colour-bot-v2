@@ -1,7 +1,7 @@
 use colours::models::ParsedColour;
 use db::models::Colour;
 
-#[derive(GraphQLObject, Serialize, Deserialize, Debug)]
+#[derive(GraphQLObject, Serialize, Deserialize, Debug, Clone)]
 pub struct ColourResponse {
     pub id: String,
     pub name: String,

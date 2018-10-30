@@ -1,11 +1,13 @@
-$darkBase: #36393e;
-$darkSecond: #2f3136;
-$darkThird: #202225;
-$darkText: rgba(255, 255, 255, 0.7);
-$darkTimestamp: hsla(0, 0%, 100%, 0.2);
+$discordDark: #36393e;
+// $darkSecond: #2f3136;
+// $darkThird: #202225;
+// $darkText: rgba(255, 255, 255, 0.7);
+// $darkTimestamp: hsla(0, 0%, 100%, 0.2);
 
-$lightBase: #ffffff;
-$lightSecond: $darkSecond;
-$lightThird: $darkThird;
-$lightText: #737f8d;
-$lightTimestamp: #99aab5;
+$discordLight: #ffffff;
+// $lightSecond: $darkSecond;
+// $lightThird: $darkThird;
+// $lightText: #737f8d;
+// $lightTimestamp: #99aab5;
+
+$border: 5px solid rgba(255, 255, 255, 0.7);

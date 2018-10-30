@@ -1,11 +1,11 @@
 //! UNTYPED !//
 
 const { compose } = require('react-app-rewired');
-const rewireTypescript = require('react-app-rewire-typescript');
+const rewireTypescript = require('react-app-rewire-clean-typescript');
 const rewireCssModules = require('react-app-rewire-css-modules');
 
 module.exports = (config, env) => {
-    const rewires = compose(rewireTypescript, rewireCssModules, (cfg, _) => {
+    const rewireCssTyped = env === 'DEVELOPMENT' ? (cfg, _) => {
         cfg.module.rules.push({
             enforce: 'pre',
             exclude: /node_modules/,
@@ -14,7 +14,13 @@ module.exports = (config, env) => {
         });
 
         return cfg;
-    });
+    } : (cfg) => cfg;
+
+    const rewires = compose(
+        rewireTypescript,
+        rewireCssModules,
+        rewireCssTyped,
+    );
 
     return rewires(config, env);
 };

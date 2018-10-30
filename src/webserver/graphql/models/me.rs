@@ -19,6 +19,7 @@ pub struct MeInfo {
     pub id: String,
     pub username: String,
     pub discriminator: String,
+    pub avatar: Option<String>,
 }
 
 impl Me {

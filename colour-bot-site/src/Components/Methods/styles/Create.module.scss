@@ -1,0 +1,94 @@
+@import '../../../variables';
+
+.Create {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.CreatePreview {
+    width: 80%;
+}
+
+.CreateInputs {
+    width: 50%;
+    & h1 {
+        margin-bottom: 3px;
+    }
+    .Prompt {
+        margin-bottom: 5px;
+        margin-left: 1.5px;
+    }
+}
+
+.CreateInputsButton {
+    width: 40%;
+}
+
+.MessageRoot {
+    width: 60%;
+    height: 225px;
+    overflow: hidden;
+    flex-direction: column;
+
+    border-radius: 25px;
+    border: 5px solid white;
+    box-shadow: inset 0px 2px 4px 0px;
+
+    font-family: 'Open Sans', 'Product Sans', sans-serif;
+
+    display: flex;
+    align-items: center;
+
+    & > div {
+        height: 50%;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        padding: 0% 10% 0% 10%;
+    }
+}
+
+.DarkMessage {
+    background: $discordDark;
+    color: #dcddde;
+
+    // border-top-left-radius: 25px;
+    // border-top-right-radius: 25px;
+}
+
+.LightMessage {
+    background: $discordLight;
+    color: #747f8d;
+
+    // border-bottom-left-radius: 25px;
+    // border-bottom-right-radius: 25px;
+}
+
+.MessageContent {
+    margin-left: 20px;
+    height: 50%;
+
+    padding-top: 3.5px;
+    // padding-bottom: 2.5px;
+}
+.MessageName {
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 15px;
+    height: 1.3em;
+}
+.MessageText {
+    margin-top: 5px;
+    font-size: 15px;
+}
+.MessageAvatar {
+    min-width: 55px;
+    min-height: 55px;
+    border-radius: 100%;
+    background-size: cover;
+}

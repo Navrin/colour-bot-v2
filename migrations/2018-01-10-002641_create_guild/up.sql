@@ -6,5 +6,7 @@ CREATE TABLE guilds (
 
     channel_id NUMERIC(64),
 
-    settings JSONB NOT NULL
+    settings JSONB NOT NULL,
+
+    legacy BOOLEAN DEFAULT FALSE
 );

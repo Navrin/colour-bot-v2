@@ -1,0 +1,70 @@
+@import '../../../variables';
+.Input {
+}
+
+.InputElement {
+    appearance: none;
+    background: none;
+    border: none;
+    fill: none;
+    color: white;
+
+    font-family: 'Product Sans';
+
+    height: 100%;
+    width: 100%;
+    padding: 15px;
+
+    font-size: 1.2em;
+    outline: none;
+
+    &::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+    }
+}
+
+.InnerInput {
+    display: flex;
+    flex-direction: row;
+    margin-top: 10px;
+    margin-bottom: 10px;
+
+    height: 60px;
+
+    width: 100%;
+
+    & > div {
+        height: 100%;
+
+        &:first-child {
+            border: $border;
+            height: 60px;
+            border-top-left-radius: 15px;
+            border-bottom-left-radius: 15px;
+            min-width: 60px;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background-clip: padding-box !important;
+
+            & svg {
+                margin-left: 5px;
+                height: 35px;
+                width: 35px;
+            }
+        }
+
+        &:last-child {
+            border-top: $border;
+            border-bottom: $border;
+            border-right: $border;
+
+            border-top-right-radius: 15px;
+            border-bottom-right-radius: 15px;
+
+            flex-grow: 1;
+        }
+    }
+}
