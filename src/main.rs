@@ -236,6 +236,38 @@ impl EventHandler for Handler {
             ready.guilds.len(),
             ready.user.name
         );
+
+        let self_id =  ready.user.id.0;
+
+        // this code very much temp. will be removed soon.
+
+        for guild in ready.guilds.clone() {
+
+            let seq: Box<Fn() -> Option<()>> = Box::new(move || {
+                let conn = utils::get_connection_or_panic();
+
+                let guild_rec = actions::guilds::convert_guild_to_record(guild.id(), &conn)?;
+
+                let id = guild_rec.channel_id?;
+                let part_guild = guild.id().get().ok()?;
+                let channel = part_guild.channels().ok()?.get(&::serenity::model::id::ChannelId(id.to_u64()?))?.clone();
+
+                let full_guild = guild.id().find()?;
+
+                let _guild = full_guild.read();
+
+                actions::guilds::update_channel_message(&_guild, self_id, &conn, false).ok()?;
+
+                use diesel::{self, prelude::*};
+
+                diesel::sql_query(format!("UPDATE guilds SET legacy = false WHERE id = {}", guild.id().0))
+                    .execute(&*conn).ok()?;
+                
+                Some(())
+            });
+
+            seq();
+        }
     }
 }
 
@@ -406,24 +438,24 @@ fn main() {
         scope.spawn(move || {
             loop {
                 use std::thread;
-use std::time::Duration;
-use parking_lot::deadlock;
+                use std::time::Duration;
+                use parking_lot::deadlock;
 
-        thread::sleep(Duration::from_secs(10));
-        let deadlocks = deadlock::check_deadlock();
-        if deadlocks.is_empty() {
-            continue;
-        }
+                thread::sleep(Duration::from_secs(10));
+                let deadlocks = deadlock::check_deadlock();
+                if deadlocks.is_empty() {
+                    continue;
+                }
 
-        println!("{} deadlocks detected", deadlocks.len());
-        for (i, threads) in deadlocks.iter().enumerate() {
-            println!("Deadlock #{}", i);
-            for t in threads {
-                println!("Thread Id {:#?}", t.thread_id());
-                println!("{:#?}", t.backtrace());
+                println!("{} deadlocks detected", deadlocks.len());
+                for (i, threads) in deadlocks.iter().enumerate() {
+                    println!("Deadlock #{}", i);
+                    for t in threads {
+                        println!("Thread Id {:#?}", t.thread_id());
+                        println!("{:#?}", t.backtrace());
+                    }
+                }
             }
-        }
-    }
         });
 
         scope.spawn(move || {
