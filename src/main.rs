@@ -248,6 +248,10 @@ impl EventHandler for Handler {
 
                 let guild_rec = actions::guilds::convert_guild_to_record(guild.id(), &conn)?;
 
+                if !guild_rec.legacy.unwrap_or(false) {
+                    return None;
+                }
+
                 let id = guild_rec.channel_id?;
                 let part_guild = guild.id().get().ok()?;
                 let channel = part_guild.channels().ok()?.get(&::serenity::model::id::ChannelId(id.to_u64()?))?.clone();
