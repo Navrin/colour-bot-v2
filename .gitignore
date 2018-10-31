@@ -4,8 +4,8 @@
 config.toml
 config.test.toml
 .env
-*.png
-*.svg
+/colour-images/*.png
+/colour-images/*.svg
 certs
 rls
 .DS_Store
