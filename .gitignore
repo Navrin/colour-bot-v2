@@ -26,3 +26,4 @@ rls
 /colour-bot-site/yarn-error.log*
 
 migrate.sql
+migrate2.sql

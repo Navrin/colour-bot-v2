@@ -19,7 +19,7 @@ use super::graphql;
 
 /// Old rocket version. Was dropped because
 /// a) performance, rocket seems to be very slow (non-async)
-/// b) matching wildcard patterns seems to be an afterthought, harder to use with SPA.println!("{}", )
+/// b) matching wildcard patterns seems to be an afterthought, harder to use with SPA.
 // type ContextOutcome = RequestOutcome<Context, ()>;
 // impl<'a, 'r> FromRequest<'a, 'r> for Context {
 //     type Error = ();

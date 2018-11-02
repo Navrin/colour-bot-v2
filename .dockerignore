@@ -6,3 +6,8 @@ config.toml
 .rust-toolchain
 ex_config.toml
 .DS_Store
+
+/colour-bot-site/node_modules
+
+migrate.sql
+migrate2.sql

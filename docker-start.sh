@@ -1,12 +1,5 @@
 #!/bin/bash
 
-(
-    cd ./colour-bot-site
-
-    yarn build
-)
-
-cargo build --release
 
 ./wait-for-it.sh db:5432
 

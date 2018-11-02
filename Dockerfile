@@ -1,9 +1,26 @@
-FROM rustlang/rust:nightly
+# web building step
+FROM node as web
 
+RUN npm install --global yarn
+
+WORKDIR /app/colour-bot-site
+
+
+RUN mkdir -p /app/colour-bot-site
+COPY ./colour-bot-site/package.json .
+COPY ./colour-bot-site/yarn.lock    .
+
+RUN yarn
+
+COPY ./colour-bot-site /app/colour-bot-site
+RUN yarn build
+
+FROM rustlang/rust:nightly as compiling
+
+RUN cargo install diesel_cli --debug --no-default-features --features postgres
+
+RUN USER=root cargo new --bin app
 WORKDIR /app
-
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - &&\
-    echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 
 RUN apt-get update &&\
     apt-get install -y\
@@ -11,14 +28,24 @@ RUN apt-get update &&\
     libgtk-3-dev\
     libpango-1.0-0\
     libpangocairo-1.0-0\
-    postgresql\
-    yarn
+    postgresql
 
-# installing in debug mode because it cuts down on build times
-RUN cargo install diesel_cli --debug --no-default-features --features postgres
+COPY ./Cargo.lock .
+COPY ./Cargo.toml .
 
+RUN cargo build --release
+RUN rm -r ./src
+
+# actual build
 COPY . /app 
-ONBUILD COPY . /app
+COPY ./src ./src
+RUN rm ./target/release/deps/colour_bot_v2*
+RUN cargo build --release
+
+
+COPY --from=web /app/colour-bot-site/build /app/colour-bot-site/build
+
 EXPOSE 80 443
+WORKDIR /app
 
 CMD ["/app/docker-start.sh"]
