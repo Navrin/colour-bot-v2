@@ -2,7 +2,6 @@ import * as React from 'react';
 import { IColourResponse, GuildStore } from '../../stores/Guild';
 import { observer, inject } from 'mobx-react';
 import { ColourPreview } from './View';
-import * as styles from './styles/View.module.scss';
 import { observable } from 'mobx';
 import Input, { IInputShape } from './Input';
 import { BaseButton } from '../BaseButton';
@@ -10,6 +9,10 @@ import { stores } from '../..';
 import { UserStore } from '../../stores/User';
 import { InputElement } from './styles/Input.module.scss';
 import Add from '@material-ui/icons/Add';
+import * as styles from './styles/ColourItem.module.scss';
+// const ResizeObserver = require('react-resize-observer').default;
+
+// import * as styles from './styles/View.module.scss';
 
 interface IColourItemProps {
     guildStore?: GuildStore;
@@ -18,11 +21,17 @@ interface IColourItemProps {
 
     permissions?: number;
     canExpand: boolean;
+    noUpdateMessage?: boolean;
 
     currentIcon?: typeof Add;
     onIconClick?: () => void;
 
     onNameChange?: (e: string) => void;
+    onExpand?: () => void;
+
+    style?: {};
+
+    measure?: () => void;
 }
 
 @inject((allStores: typeof stores) => ({
@@ -44,7 +53,11 @@ export class ColourItem extends React.Component<
             ? this.colourUpdateState.name
             : this.props.name;
         return (
-            <div className={styles.Colour} key={this.props.id}>
+            <div
+                style={this.props.style}
+                className={styles.Colour}
+                key={this.props.id}
+            >
                 <div
                     onClick={this.onExpandClick()}
                     className={styles.ColourRow}
@@ -80,8 +93,11 @@ export class ColourItem extends React.Component<
                         />
                     )}
 
-                    {this.colourUpdateState && ' (not saved.)'}
+                    {this.colourUpdateState &&
+                        !this.props.noUpdateMessage &&
+                        ' (not saved.)'}
                     <div style={{ flexGrow: 1 }} />
+
                     <ColourPreview
                         {...this.props}
                         name={
@@ -102,9 +118,15 @@ export class ColourItem extends React.Component<
                         style={{
                             height: this.isExpanded ? 230 : 0,
                             width: '50%',
+                            position: 'relative',
                         }}
                         className={styles.ColourExpanded}
                     >
+                        {/* <ResizeObserver
+                            onResize={(e: any) => {
+                                this.props.measure && this.props.measure();
+                            }}
+                        /> */}
                         <Input
                             values={{
                                 colour: this.props.colour,
@@ -120,7 +142,7 @@ export class ColourItem extends React.Component<
                         <BaseButton
                             disabled={this.colourUpdateState == null}
                             className={styles.ColourExpandedButton}
-                            active={this.colourUpdateState != null}
+                            active={(this.colourUpdateState != null).toString()}
                             prompt="Update"
                             onClick={() => {
                                 if (this.colourUpdateState == null) {
@@ -146,6 +168,8 @@ export class ColourItem extends React.Component<
         | ((event: React.MouseEvent<HTMLDivElement>) => void)
         | undefined {
         return () => {
+            this.props.onExpand && this.props.onExpand();
+
             const userStore = this.props.userStore!;
             if (!userStore.hasRolePermissions(this.props.guildId)) {
                 return;

@@ -1,7 +1,6 @@
 //! # Colour Bot V2.
 //!
 //! A reimplmentation of the colour bot in a fully type-safe language.
-#![feature(plugin, decl_macro, custom_derive)]
 // FIXME: Warn/deny for this once -DIESEL- updates for this warning.
 #![allow(proc_macro_derive_resolution_fallback, unknown_lints)]
 
@@ -46,10 +45,10 @@ extern crate serde_json;
 extern crate lazy_static;
 extern crate chashmap;
 extern crate serenity;
-extern crate openssl;
 extern crate svg;
 extern crate toml;
 extern crate typemap;
+extern crate openssl;
 
 // needs to resolve before other modules
 #[macro_use]
@@ -440,23 +439,25 @@ fn main() {
         });
 
         scope.spawn(move || {
-            loop {
-                use std::thread;
-                use std::time::Duration;
-                use parking_lot::deadlock;
+            #[cfg(debug_assertions)] {
+                loop {
+                    use std::thread;
+                    use std::time::Duration;
+                    use parking_lot::deadlock;
 
-                thread::sleep(Duration::from_secs(10));
-                let deadlocks = deadlock::check_deadlock();
-                if deadlocks.is_empty() {
-                    continue;
-                }
+                    thread::sleep(Duration::from_secs(10));
+                    let deadlocks = deadlock::check_deadlock();
+                    if deadlocks.is_empty() {
+                        continue;
+                    }
 
-                println!("{} deadlocks detected", deadlocks.len());
-                for (i, threads) in deadlocks.iter().enumerate() {
-                    println!("Deadlock #{}", i);
-                    for t in threads {
-                        println!("Thread Id {:#?}", t.thread_id());
-                        println!("{:#?}", t.backtrace());
+                    println!("{} deadlocks detected", deadlocks.len());
+                    for (i, threads) in deadlocks.iter().enumerate() {
+                        println!("Deadlock #{}", i);
+                        for t in threads {
+                            println!("Thread Id {:#?}", t.thread_id());
+                            println!("{:#?}", t.backtrace());
+                        }
                     }
                 }
             }

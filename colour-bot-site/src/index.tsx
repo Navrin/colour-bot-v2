@@ -3,8 +3,11 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import App from './Components/App';
+
 import './index.scss';
 import registerServiceWorker from './registerServiceWorker';
+import 'react-virtualized/styles.css';
+
 import { Provider } from 'mobx-react';
 import { UserStore } from './stores/User';
 import { BrowserRouter, Route, Redirect, Switch } from 'react-router-dom';

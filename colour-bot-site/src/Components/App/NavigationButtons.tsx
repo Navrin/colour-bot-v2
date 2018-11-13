@@ -41,7 +41,7 @@ export class NavigationButtons extends React.Component<{
             .map(([k, { name: n }]) => (
                 <BaseButton
                     key={n}
-                    active={k == this.props.userStore!.activeState}
+                    active={(k == this.props.userStore!.activeState).toString()}
                     onClick={this.props.onButtonNavigate(k)}
                     prompt={n}
                 />

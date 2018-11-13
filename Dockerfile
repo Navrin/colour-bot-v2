@@ -15,37 +15,57 @@ RUN yarn
 COPY ./colour-bot-site /app/colour-bot-site
 RUN yarn build
 
+# All cli tools the startup script needs.
+FROM rustlang/rust:nightly as installing
+
+RUN mkdir -p /cargo/bin
+RUN cargo install --root /cargo/ diesel_cli --debug --no-default-features --features postgres
+RUN ls /cargo/bin
+
+# complining the apps dependencies first, then the src
 FROM rustlang/rust:nightly as compiling
 
-RUN cargo install diesel_cli --debug --no-default-features --features postgres
+# RUN apt-get update &&
+#     apt-get install -y\
+#     libcairo2-dev\
+#     libgtk-3-dev\
+#     libpango-1.0-0\
+#     libpangocairo-1.0-0\
+#     postgresql
 
 RUN USER=root cargo new --bin app
-WORKDIR /app
 
-RUN apt-get update &&\
-    apt-get install -y\
-    libcairo2-dev\
-    libgtk-3-dev\
-    libpango-1.0-0\
-    libpangocairo-1.0-0\
-    postgresql
+WORKDIR /app
+COPY ./Makefile /app/Makefile
+
+RUN make get_deps
 
 COPY ./Cargo.lock .
 COPY ./Cargo.toml .
-
 RUN cargo build --release
 RUN rm -r ./src
 
 # actual build
 COPY . /app 
 COPY ./src ./src
-RUN rm ./target/release/deps/colour_bot_v2*
+RUN rm -f ./target/release/deps/colour_bot_v2*
 RUN cargo build --release
 
+FROM ubuntu AS final
 
-COPY --from=web /app/colour-bot-site/build /app/colour-bot-site/build
+RUN apt-get update && apt-get install make
+
+WORKDIR /app
+
+COPY --from=installing /cargo/bin/diesel /usr/local/bin/diesel
+COPY --from=compiling /app/target/release/colour-bot-v2 .
+COPY --from=web /app/colour-bot-site/build ./colour-bot-site/build
+COPY . /app
+COPY ./Makefile /app/Makefile
+
+WORKDIR /app
+RUN make get_deps
 
 EXPOSE 80 443
-WORKDIR /app
 
 CMD ["/app/docker-start.sh"]

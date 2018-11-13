@@ -1,0 +1,35 @@
+.Root {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+    height: 100%;
+}
+
+.Inner {
+    display: grid;
+    height: 95%;
+    width: 100%;
+
+    flex-direction: column;
+
+    grid-template: 30px 9fr 2fr / 100%;
+
+    & > div:first-child {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    & > div:nth-child(2) {
+        // height: 100%;
+        flex-grow: 1;
+        margin-right: 5px;
+    }
+}
+
+.Native {
+    overflow-y: scroll;
+    max-height: 100%;
+}

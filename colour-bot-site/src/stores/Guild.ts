@@ -193,7 +193,7 @@ export class GuildStore {
             });
 
             const colour = response.data!.updateColour;
-            this.updateGuild(guild, colour, guildId);
+            this.updateGuild(guild, [colour], guildId);
 
             notificationStore.send({
                 message: 'Your colour was updated sucessfully!',
@@ -229,9 +229,11 @@ export class GuildStore {
             const responses: IColourDeleteResponse[] = response.data!
                 .deleteColours;
 
-            responses.filter(it => it.success).map(state => {
-                guild.colours.delete(state.id);
-            });
+            responses
+                .filter(it => it.success)
+                .map(state => {
+                    guild.colours.delete(state.id);
+                });
 
             notificationStore.send({
                 message: 'Colour was deleted sucessfully!',

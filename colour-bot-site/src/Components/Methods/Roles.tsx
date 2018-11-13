@@ -3,15 +3,17 @@ import { GuildStore, IRole } from '../../stores/Guild';
 import { inject, observer } from 'mobx-react';
 import { stores } from '../..';
 import { ColourItem } from './ColourItem';
-import { autorun, observable, toJS } from 'mobx';
-import * as styles from './styles/Roles.module.scss';
-import { ScrollArea } from '../Sidebar/Sidebar';
+import { autorun, observable, toJS, IReactionDisposer } from 'mobx';
+// import { ScrollArea } from '../Sidebar/Sidebar';
 import { UserStore } from '../../stores/User';
 import { BaseButton } from '../BaseButton';
 import Add from '@material-ui/icons/Add';
 import Cancel from '@material-ui/icons/Cancel';
 import { mapify } from '../../stores/mapify';
 import * as _ from 'lodash';
+import ListComponent from './Helpers/ListComponent';
+import * as styles from './styles/Roles.module.scss';
+import VirtualList from 'react-tiny-virtual-list';
 
 interface IRolesProps {
     id: string;
@@ -24,6 +26,7 @@ interface IRoleState {
     name?: string;
     state?: 'selected';
     role: IRole;
+    ref?: ColourItem;
 }
 
 @inject((allStore: typeof stores) => ({
@@ -34,9 +37,13 @@ interface IRoleState {
 class Roles extends React.Component<IRolesProps> {
     @observable.shallow
     protected roles: Map<string, IRoleState> = new Map();
+    endAutorun: IReactionDisposer | null = null;
+    listRender: VirtualList | null;
 
     public async componentDidMount() {
-        autorun(async () => {
+        this.endAutorun = autorun(async () => {
+            console.count('roles autorun');
+
             const id = this.props.userStore!.activeGuild!;
             if (id == null) {
                 return;
@@ -79,41 +86,21 @@ class Roles extends React.Component<IRolesProps> {
         });
     }
 
+    public componentWillUnmount() {
+        if (this.endAutorun) {
+            this.endAutorun();
+        }
+    }
+
     public render() {
         return (
-            <div className={styles.Roles}>
-                <div>
-                    <span>Click the name to change it.</span>
-                </div>
-                <ScrollArea>
-                    {[...this.roles.values()].map(({ state, role, name }) => (
-                        <ColourItem
-                            {...role}
-                            currentIcon={state ? Cancel : Add}
-                            key={role.id}
-                            name={name || role.name}
-                            onIconClick={() => {
-                                this.roles.set(role.id, {
-                                    state: this.roles.get(role.id)!.state
-                                        ? undefined
-                                        : 'selected',
-                                    role,
-                                    name,
-                                });
-                            }}
-                            onNameChange={e => {
-                                this.roles.set(role.id, {
-                                    state,
-                                    role,
-                                    name: e,
-                                });
-                            }}
-                            guildId={this.props.id}
-                            canExpand={false}
-                        />
-                    ))}
-                </ScrollArea>
-                <div>
+            <ListComponent
+                listRef={ref => (this.listRender = ref)}
+                rowRender={this.renderRow}
+                rowCount={this.roles.size}
+                message="Click the name to change it."
+            >
+                <div className={styles.Buttons}>
                     <BaseButton
                         prompt="Add roles"
                         onClick={async () => {
@@ -132,17 +119,93 @@ class Roles extends React.Component<IRolesProps> {
 
                             this.clearRoles()();
                         }}
-                        active={false}
+                        active="false"
                     />
                     <BaseButton
                         prompt="Clear roles"
                         onClick={this.clearRoles()}
-                        active={false}
+                        active="false"
                     />
                 </div>
-            </div>
+            </ListComponent>
+
+            // <div id={styles.Root}>
+            //     <div className={styles.Roles}>
+            //         <div>
+            //             <i>click the name to change it</i>
+            //         </div>
+
+            //         <div>
+            //             {this.roles && (
+            //                 <AutoSizer>
+            //                     {({ height, width }) => (
+            //                         <List
+            //                             force={this.roles}
+            //                             rowCount={this.roles.size}
+            //                             rowHeight={105}
+            //                             height={height}
+            //                             width={width}
+            //                             rowRenderer={this.renderRow}
+            //                             ref={e => (this.listRender = e)}
+            //                         />
+            //                     )}
+            //                 </AutoSizer>
+            //             )}
+            //         </div>
+
+            //         <div>
+            //         </div>
+            //     </div>
+            // </div>
         );
     }
+
+    private renderRow = ({
+        key,
+        index,
+        style,
+    }: {
+        key: string;
+        index: number;
+        style: {};
+    }): JSX.Element => {
+        if (this.roles == null) {
+            return <div />;
+        }
+
+        console.log(style);
+
+        const { state, role, name } = Array.from(this.roles.values())[index];
+
+        return (
+            <div style={{ marginBottom: 15, whiteSpace: 'nowrap' }}>
+                <ColourItem
+                    {...role}
+                    currentIcon={state ? Cancel : Add}
+                    name={name || role.name}
+                    onIconClick={() => {
+                        const inst = this.roles.get(role.id)!;
+
+                        this.roles.set(role.id, {
+                            state: inst.state ? undefined : 'selected',
+                            role,
+                            name,
+                        });
+                    }}
+                    onNameChange={e => {
+                        this.roles.set(role.id, {
+                            state,
+                            role,
+                            name: e,
+                        });
+                    }}
+                    guildId={this.props.id}
+                    canExpand={false}
+                    noUpdateMessage={true}
+                />
+            </div>
+        );
+    };
 
     private clearRoles(): (() => void) &
         ((event: React.MouseEvent<HTMLElement>) => void) {

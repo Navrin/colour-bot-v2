@@ -4,11 +4,13 @@ import Progress from '@material-ui/core/CircularProgress';
 import { inject, observer } from 'mobx-react';
 import { stores } from '../..';
 import * as styles from './styles/View.module.scss';
-import { ScrollArea } from '../Sidebar/Sidebar';
 import { ColourItem } from './ColourItem';
 import { UserStore } from '../../stores/User';
-import { autorun, observable, observe } from 'mobx';
+import { autorun, observable, observe, IReactionDisposer, Lambda } from 'mobx';
 import Delete from '@material-ui/icons/Delete';
+import ListComponent from './Helpers/ListComponent';
+import { ListRowProps } from 'react-virtualized';
+import VirtualList from 'react-tiny-virtual-list';
 
 interface IViewProps {
     id: string;
@@ -37,64 +39,86 @@ class View extends React.Component<IViewProps> {
     @observable
     protected hasPerm?: boolean = true;
 
+    disposers: (IReactionDisposer | Lambda)[] = [];
+
+    listRef: VirtualList | null = null;
+
     public componentDidMount() {
-        observe(this.props.userStore!.guilds, () => {
-            this.hasPerm = this.props.userStore.hasRolePermissionsForActive;
-        });
+        this.disposers.push(
+            observe(this.props.userStore!.guilds, () => {
+                this.hasPerm = this.props.userStore.hasRolePermissionsForActive;
+            }),
+        );
 
-        autorun(() => {
-            const { guilds } = this.props.guildStore!;
+        this.disposers.push(
+            autorun(() => {
+                console.count('view autoruns');
+                const { guilds } = this.props.guildStore!;
 
-            const id = this.props.userStore.activeGuild!;
-            const guild = guilds.get(id);
-            const guildInfo = this.props.userStore.guilds.get(id);
+                const id = this.props.userStore.activeGuild!;
+                const guild = guilds.get(id);
+                const guildInfo = this.props.userStore.guilds.get(id);
 
-            this.guild = guild;
+                this.guild = guild;
 
-            if (guildInfo) {
-                this.hasPerm = this.props.userStore!.rolePermissionCheck(
-                    guildInfo,
-                );
-            }
-        });
-    }
-    public render() {
-        return (
-            <div id={styles.Root}>
-                {this.guild ? (
-                    <div className={styles.List}>
-                        <div>
-                            {this.hasPerm && <i>click to update the colour</i>}
-                        </div>
-                        <ScrollArea>
-                            {Array.from(this.guild.colours.values()).map(c => (
-                                <ColourItem
-                                    currentIcon={Delete}
-                                    canExpand={true}
-                                    guildId={this.props.id}
-                                    key={c.id}
-                                    onIconClick={async () => {
-                                        try {
-                                            await this.props.guildStore!.deleteColours(
-                                                this.props.id,
-                                                [c.id],
-                                            );
-                                            this.guild!.colours.delete(c.id);
-                                        } catch (e) {
-                                            console.error(e);
-                                        }
-                                    }}
-                                    {...c}
-                                />
-                            ))}
-                        </ScrollArea>
-                    </div>
-                ) : (
-                    <Progress style={{ fill: '#fff', color: '#fff' }} />
-                )}
-            </div>
+                if (guildInfo) {
+                    this.hasPerm = this.props.userStore!.rolePermissionCheck(
+                        guildInfo,
+                    );
+                }
+            }),
         );
     }
+
+    public componentWillUnmount() {
+        this.disposers.forEach(it => it());
+    }
+
+    public render() {
+        return this.guild ? (
+            <ListComponent
+                rowCount={this.guild.colours.size}
+                rowRender={this.rowRender}
+                listRef={e => {
+                    this.listRef = e;
+                }}
+                message="Click a colour to update it."
+            />
+        ) : (
+            <Progress style={{ fill: '#fff', color: '#fff' }} />
+        );
+    }
+
+    private rowRender = (props: ListRowProps) => {
+        if (this.guild == null) {
+            return <div />;
+        }
+
+        const c = Array.from(this.guild.colours.values())[props.index];
+        return (
+            <div style={props.style} key={props.key}>
+                <ColourItem
+                    currentIcon={Delete}
+                    canExpand={true}
+                    guildId={this.props.id}
+                    key={c.id}
+                    onExpand={() => {}}
+                    onIconClick={async () => {
+                        try {
+                            await this.props.guildStore!.deleteColours(
+                                this.props.id,
+                                [c.id],
+                            );
+                            this.guild!.colours.delete(c.id);
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }}
+                    {...c}
+                />
+            </div>
+        );
+    };
 }
 
 export default View;

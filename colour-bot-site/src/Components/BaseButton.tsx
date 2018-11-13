@@ -6,7 +6,7 @@ export function BaseButton(
     props: {
         prompt: string;
         onClick: () => void;
-        active: boolean;
+        active: string;
     } & ButtonBaseProps,
 ) {
     return (

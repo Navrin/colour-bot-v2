@@ -93,7 +93,7 @@ class Create extends React.Component<ICreateProps> {
                                 hex: this.values.colour,
                             });
                         }}
-                        active={false}
+                        active="false"
                         className={styles.CreateInputsButton}
                     />
                 </div>
