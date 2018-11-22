@@ -13,7 +13,7 @@ import { mapify } from '../../stores/mapify';
 import * as _ from 'lodash';
 import ListComponent from './Helpers/ListComponent';
 import * as styles from './styles/Roles.module.scss';
-import VirtualList from 'react-tiny-virtual-list';
+import { List } from 'react-virtualized';
 
 interface IRolesProps {
     id: string;
@@ -38,12 +38,11 @@ class Roles extends React.Component<IRolesProps> {
     @observable.shallow
     protected roles: Map<string, IRoleState> = new Map();
     endAutorun: IReactionDisposer | null = null;
-    listRender: VirtualList | null;
+    listRender: List | null;
 
     public async componentDidMount() {
         this.endAutorun = autorun(async () => {
-            console.count('roles autorun');
-
+            this.listRender && this.listRender.forceUpdateGrid();
             const id = this.props.userStore!.activeGuild!;
             if (id == null) {
                 return;
@@ -173,37 +172,42 @@ class Roles extends React.Component<IRolesProps> {
             return <div />;
         }
 
-        console.log(style);
-
         const { state, role, name } = Array.from(this.roles.values())[index];
 
         return (
-            <div style={{ marginBottom: 15, whiteSpace: 'nowrap' }}>
-                <ColourItem
-                    {...role}
-                    currentIcon={state ? Cancel : Add}
-                    name={name || role.name}
-                    onIconClick={() => {
-                        const inst = this.roles.get(role.id)!;
+            <ColourItem
+                style={{
+                    ...style,
+                    height: 'auto',
+                    marginTop: 10,
+                    marginBottom: 10,
+                }}
+                {...role}
+                key={key}
+                currentIcon={state ? Cancel : Add}
+                name={name || role.name}
+                onIconClick={() => {
+                    const inst = this.roles.get(role.id)!;
 
-                        this.roles.set(role.id, {
-                            state: inst.state ? undefined : 'selected',
-                            role,
-                            name,
-                        });
-                    }}
-                    onNameChange={e => {
-                        this.roles.set(role.id, {
-                            state,
-                            role,
-                            name: e,
-                        });
-                    }}
-                    guildId={this.props.id}
-                    canExpand={false}
-                    noUpdateMessage={true}
-                />
-            </div>
+                    this.roles.set(role.id, {
+                        state: inst.state ? undefined : 'selected',
+                        role,
+                        name,
+                    });
+
+                    this.listRender && this.listRender.forceUpdateGrid();
+                }}
+                onNameChange={e => {
+                    this.roles.set(role.id, {
+                        state,
+                        role,
+                        name: e,
+                    });
+                }}
+                guildId={this.props.id}
+                canExpand={false}
+                noUpdateMessage={true}
+            />
         );
     };
 

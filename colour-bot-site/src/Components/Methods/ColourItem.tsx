@@ -2,7 +2,7 @@ import * as React from 'react';
 import { IColourResponse, GuildStore } from '../../stores/Guild';
 import { observer, inject } from 'mobx-react';
 import { ColourPreview } from './View';
-import { observable } from 'mobx';
+import { observable, autorun } from 'mobx';
 import Input, { IInputShape } from './Input';
 import { BaseButton } from '../BaseButton';
 import { stores } from '../..';
@@ -27,11 +27,15 @@ interface IColourItemProps {
     onIconClick?: () => void;
 
     onNameChange?: (e: string) => void;
-    onExpand?: () => void;
+    onExpand?: (i: boolean) => void;
+    onColourStateUpdate?: (it: IInputShape | null) => void;
 
     style?: {};
 
-    measure?: () => void;
+    mref?: (e: Element | null) => void;
+
+    isExpanded?: boolean;
+    updateState?: IInputShape;
 }
 
 @inject((allStores: typeof stores) => ({
@@ -43,10 +47,18 @@ export class ColourItem extends React.Component<
     IColourResponse & IColourItemProps
 > {
     @observable
-    protected isExpanded: boolean = false;
+    protected isExpanded: boolean = this.props.isExpanded || false;
 
     @observable
-    protected colourUpdateState: null | IInputShape = null;
+    protected colourUpdateState: null | IInputShape =
+        this.props.updateState || null;
+
+    componentDidMount() {
+        autorun(() => {
+            this.props.onColourStateUpdate &&
+                this.props.onColourStateUpdate(this.colourUpdateState);
+        });
+    }
 
     public render() {
         const nameValue = this.colourUpdateState
@@ -57,6 +69,7 @@ export class ColourItem extends React.Component<
                 style={this.props.style}
                 className={styles.Colour}
                 key={this.props.id}
+                ref={this.props.mref}
             >
                 <div
                     onClick={this.onExpandClick()}
@@ -128,10 +141,12 @@ export class ColourItem extends React.Component<
                             }}
                         /> */}
                         <Input
-                            values={{
-                                colour: this.props.colour,
-                                name: this.props.name,
-                            }}
+                            values={
+                                this.props.updateState || {
+                                    colour: this.props.colour,
+                                    name: this.props.name,
+                                }
+                            }
                             onChange={e => {
                                 if (this.props.canExpand) {
                                     this.colourUpdateState = e;
@@ -168,14 +183,13 @@ export class ColourItem extends React.Component<
         | ((event: React.MouseEvent<HTMLDivElement>) => void)
         | undefined {
         return () => {
-            this.props.onExpand && this.props.onExpand();
-
             const userStore = this.props.userStore!;
             if (!userStore.hasRolePermissions(this.props.guildId)) {
                 return;
             }
 
             this.isExpanded = !this.isExpanded;
+            this.props.onExpand && this.props.onExpand(this.isExpanded);
         };
     }
 }

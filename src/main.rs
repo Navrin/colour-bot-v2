@@ -40,6 +40,7 @@ extern crate crossbeam_channel;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
@@ -235,6 +236,14 @@ impl EventHandler for Handler {
             ready.guilds.len(),
             ready.user.name
         );
+
+        println!(
+            "Increment #1"
+        );
+
+        if cfg!(debug_assertions) {
+            println!("Debug assertions are enabled.");
+        }
 
         let self_id =  ready.user.id.0;
 

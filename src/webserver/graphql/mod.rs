@@ -170,12 +170,24 @@ fn create_colours_fn(
                     })
                 }).or_else(|_| {
                     let guild = guild.clone();                    
-                    guild
-                        .create_role(|r| {
-                            r.name(&name)
-                                .colour(parsed_colour.as_role_colour().0.into())
-                        }).map_err(FieldError::from)
-                    
+
+                    use serenity::http::create_role;
+                    use serde_json::map::Map;
+
+
+
+                    json!({
+                            "name": &name,
+                            "colour": parsed_colour.as_role_colour().0
+                        })
+                        .as_object()
+                        .ok_or_else(||GenericError("Bad json value was found".to_string()))
+                        .and_then(|json| {
+
+                            create_role(guild.id.0, json)
+                                .map_err(|e| GenericError(format!("Could not create role due to {:#?}", e)))
+                        })
+                        .map_err(FieldError::from)
                 })?;
 
             Ok(

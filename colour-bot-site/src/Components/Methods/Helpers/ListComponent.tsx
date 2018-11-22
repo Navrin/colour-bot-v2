@@ -1,12 +1,17 @@
 import * as React from 'react';
 import * as styles from '../styles/ListComponent.module.scss';
 import * as _ from 'lodash';
-import VirtualList from 'react-tiny-virtual-list';
-const ResizeObserver = require('react-resize-detector').default;
+import { List, AutoSizer } from 'react-virtualized';
+import { observable } from 'mobx';
+import { observer } from 'mobx-react';
+import Measure from 'react-measure';
 
 interface IListComponentProps {
-    rowRender: (args: { index: number; style: {} }) => JSX.Element;
-    listRef: (ref: VirtualList | null) => void;
+    rowRender: (
+        args: { index: number; style: {} },
+        ref: (r: Element | null) => void,
+    ) => JSX.Element;
+    listRef: (ref: List | null) => void;
 
     rowCount: number;
     message: string;
@@ -16,33 +21,50 @@ interface IListComponentProps {
     children?: JSX.Element | JSX.Element[];
 }
 
+@observer
 class ListComponent extends React.Component<IListComponentProps> {
     static defaultProps = {
         useVirtual: true,
     };
 
+    listRef: List | null = null;
+
+    @observable
     sizes = {};
 
-    rowRender = (args: { index: number; style: {} }) => {
-        console.log(this.sizes);
-
+    rowRender = (args: {
+        key: string;
+        index: number;
+        style: { [key: string]: any };
+    }) => {
         return (
-            <div style={args.style}>
-                <ResizeObserver
-                    handleHeight={true}
-                    onResize={(rect: number) => {
-                        console.log('resize: ', rect);
-                        this.sizes[args.index] = rect;
-                    }}
-                >
-                    {this.props.rowRender(args)}
-                </ResizeObserver>
-            </div>
+            <Measure
+                key={args.key}
+                bounds={true}
+                onResize={rect => {
+                    this.sizes[args.index] = rect.bounds!.height + 20;
+
+                    this.listRef && this.listRef.recomputeRowHeights();
+                }}
+            >
+                {({ measureRef }) =>
+                    this.props.rowRender(
+                        {
+                            index: args.index,
+                            style: {
+                                left: args.style.left,
+                                position: args.style.position,
+                                top: args.style.top,
+                            },
+                        },
+                        measureRef,
+                    )
+                }
+            </Measure>
         );
     };
 
     render() {
-        console.log(this.props);
         return (
             <div className={styles.Root}>
                 <div className={styles.Inner}>
@@ -51,14 +73,21 @@ class ListComponent extends React.Component<IListComponentProps> {
                     </div>
 
                     <div>
-                        <VirtualList
-                            height={300}
-                            width="100%"
-                            itemCount={this.props.rowCount}
-                            itemSize={160}
-                            renderItem={this.rowRender}
-                            ref={this.props.listRef}
-                        />
+                        <AutoSizer>
+                            {({ width, height }) => (
+                                <List
+                                    height={height}
+                                    width={width}
+                                    rowCount={this.props.rowCount}
+                                    rowHeight={i => this.sizes[i.index] || 120}
+                                    rowRenderer={this.rowRender}
+                                    ref={ref => {
+                                        this.listRef = ref;
+                                        this.props.listRef(ref);
+                                    }}
+                                />
+                            )}
+                        </AutoSizer>
                     </div>
                     {this.props.children}
                 </div>

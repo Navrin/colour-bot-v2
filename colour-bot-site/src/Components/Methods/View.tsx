@@ -9,8 +9,8 @@ import { UserStore } from '../../stores/User';
 import { autorun, observable, observe, IReactionDisposer, Lambda } from 'mobx';
 import Delete from '@material-ui/icons/Delete';
 import ListComponent from './Helpers/ListComponent';
-import { ListRowProps } from 'react-virtualized';
-import VirtualList from 'react-tiny-virtual-list';
+import { List, ListRowProps } from 'react-virtualized';
+import { IInputShape } from './Input';
 
 interface IViewProps {
     id: string;
@@ -39,9 +39,13 @@ class View extends React.Component<IViewProps> {
     @observable
     protected hasPerm?: boolean = true;
 
+    itemState: {
+        [key: string]: { input: IInputShape | undefined; expanded: boolean };
+    } = {};
+
     disposers: (IReactionDisposer | Lambda)[] = [];
 
-    listRef: VirtualList | null = null;
+    listRef: List | null = null;
 
     public componentDidMount() {
         this.disposers.push(
@@ -89,34 +93,57 @@ class View extends React.Component<IViewProps> {
         );
     }
 
-    private rowRender = (props: ListRowProps) => {
+    private rowRender = (
+        props: ListRowProps,
+        mref: (r: Element | null) => void,
+    ) => {
         if (this.guild == null) {
             return <div />;
         }
 
         const c = Array.from(this.guild.colours.values())[props.index];
+
+        if (this.itemState[c.id] == null) {
+            this.itemState[c.id] = { expanded: false, input: undefined };
+        }
+
+        const state = this.itemState[c.id];
+
         return (
-            <div style={props.style} key={props.key}>
-                <ColourItem
-                    currentIcon={Delete}
-                    canExpand={true}
-                    guildId={this.props.id}
-                    key={c.id}
-                    onExpand={() => {}}
-                    onIconClick={async () => {
-                        try {
-                            await this.props.guildStore!.deleteColours(
-                                this.props.id,
-                                [c.id],
-                            );
-                            this.guild!.colours.delete(c.id);
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    }}
-                    {...c}
-                />
-            </div>
+            <ColourItem
+                {...c}
+                style={{
+                    ...props.style,
+                    height: 'auto',
+                    marginTop: 10,
+                    marginBottom: 10,
+                }}
+                key={props.key}
+                mref={mref}
+                currentIcon={Delete}
+                canExpand={true}
+                guildId={this.props.id}
+                isExpanded={state.expanded}
+                onExpand={i => {
+                    state.expanded = i;
+                }}
+                updateState={state.input}
+                onColourStateUpdate={i => {
+                    state.input = i || undefined;
+                }}
+                // colour={state.input ? state.input.colour : undefined}
+                onIconClick={async () => {
+                    try {
+                        await this.props.guildStore!.deleteColours(
+                            this.props.id,
+                            [c.id],
+                        );
+                        this.guild!.colours.delete(c.id);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }}
+            />
         );
     };
 }
